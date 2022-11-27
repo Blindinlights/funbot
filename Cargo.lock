@@ -341,6 +341,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "codegen"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "devise",
  "proc-macro-error",
  "proc-macro2",
@@ -521,6 +522,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9c384f161156f5260c24a097c56119f9be8c798586aecc13afbcbe7b7e26bf8"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "funbot"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "rustqq",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

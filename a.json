@@ -1,0 +1,15 @@
+{
+    "post_type": "message",
+    "message_type": "private",
+    "time": 1669572325,
+    "self_id": 2834957564,
+    "sub_type": "friend",
+    "raw_message": "hi",
+    "font": 0,
+    "sender": {
+        "age": 0,
+        "nickname": "Blindinlights",
+        "sex": "unknown",
+        "user_id": 1057584970
+    }
+}

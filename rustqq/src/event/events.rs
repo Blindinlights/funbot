@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 extern crate proc_macro;
-
+use codegen::Meassages;
 macro_rules! make_event{
     (
      $(#[$meta:meta])*
@@ -38,7 +38,7 @@ macro_rules! make_msg_event{
     ) => {
             make_event!{
             $(#[$meta])*
-            
+            #[derive(Meassages)]
             pub struct $struct_name{
                 message_type:String,
                 sub_type:String,
@@ -82,10 +82,30 @@ macro_rules! make_notice_event {
 
        }
 }
-make_msg_event! {
-    //#[derive(serde::Serialize,serde::Deserialize)]
-    struct PrivateMessage{
-        temp_source:i64,
+// make_msg_event! {
+//     //#[derive(serde::Serialize,serde::Deserialize)]
+//     struct PrivateMessage{
+//         temp_source:i64,
+//     }
+// }
+#[derive(serde::Serialize,serde::Deserialize)]
+pub struct Sender{
+    age:i32,
+    nickname:String,
+    sex:String,
+    user_id:i64,
+}
+make_event!{
+    #[derive(Meassages)]
+    pub struct PrivateMessage{
+        message_type:String,
+        sub_type:String,
+        message_id:i64,
+        user_id:i64,
+        message:String,
+        raw_message:String,
+        font:i32,
+        sender:Sender,
     }
 }
 make_msg_event! {
@@ -221,4 +241,8 @@ pub enum Event {
     GroupRequest(GroupRequest),
     MetaEvent(MetaEvent),
     Unknown
+}
+pub trait Meassages {
+    fn start_with(&self, s: &str) -> bool;
+    fn eq(&self, s: &str) -> bool;
 }

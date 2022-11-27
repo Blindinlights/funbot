@@ -1,2 +1,2 @@
-pub(crate) mod api;
+pub mod api;
 pub mod message;

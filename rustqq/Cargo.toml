@@ -9,7 +9,7 @@ reqwest = { version = "0.11.13", features = ["json","blocking"] }
 tokio = { version = "1.22.0", features = ["full"] }
 serde_json = "1.0"
 serde = { version = "1.0.147", features = ["derive"] }
-# rocket = { version = "0.5.0-rc.2", features = ["secrets"] }
+#
 actix-web = { version = "4.0.0-beta.8", features = ["rustls"] }
 async-trait="0.1.51"
 codegen={path="../codegen"}

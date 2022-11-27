@@ -1,2 +1,2 @@
 [workspace]
-members=["rustqq","codegen"]
+members=["rustqq","codegen","funbot"]

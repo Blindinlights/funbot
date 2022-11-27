@@ -1,4 +1,5 @@
 //web server
+#![allow(dead_code,unused)]
 use actix_web::{post, App, HttpResponse, HttpServer, Responder};
 use crate::event::events::*;
 use serde_json;
@@ -17,7 +18,7 @@ pub async fn build_server(ip:&str,port:u16) -> std::io::Result<()> {
     .run()
     .await
 }
-fn get_event(event:&serde_json::Value)->Event{
+pub fn get_event(event:&serde_json::Value)->Event{
     let post_type = event["post_type"].as_str().unwrap();
     match post_type{
         "message"=>{

@@ -1,1 +1,2 @@
-pub(crate) mod events;
+pub mod events;
+pub mod reply_trait;
