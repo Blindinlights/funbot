@@ -1,12 +1,6 @@
 #![allow(dead_code)]
 extern crate proc_macro;
 
-pub trait IntoJson{
-    fn into_json(&self)->String;
-  
-}
-#[derive(serde::Serialize,serde::Deserialize)]
-struct Foo(i32);
 macro_rules! make_event{
     (
      $(#[$meta:meta])*
@@ -90,7 +84,7 @@ macro_rules! make_notice_event {
 }
 make_msg_event! {
     //#[derive(serde::Serialize,serde::Deserialize)]
-    struct PrvateMassage{
+    struct PrivateMessage{
         temp_source:i64,
     }
 }
@@ -184,4 +178,47 @@ make_notice_event! {
         sender_id:i64,
         target_id:i64,
     }
+}
+make_event!{
+    struct FriendRequest{
+        request_type:String,
+        user_id:i64,
+        comment:String,
+        flag:String,
+    }
+}
+make_event!{
+    struct GroupRequest{
+        request_type:String,
+        sub_type:String,
+        group_id:i64,
+        user_id:i64,
+        comment:String,
+        flag:String,
+    }
+}
+make_event!{
+    struct MetaEvent{
+        meta_event_type:String,
+        status:String,
+        interval:i64,
+    }
+}
+pub enum Event {
+    PrivateMessage(PrivateMessage),
+    GroupMessage(GroupMessage),
+    GroupFileUpload(GroupFileUpload),
+    GroupAdminChange(GroupAdminChange),
+    GroupMemberReduce(GroupMemberReduce),
+    GroupMemberIncrease(GroupMemberIncrease),
+    GroupMute(GroupMute),
+    FriendAdd(FriendAdd),
+    GroupMessageRecall(GroupMessageRecall),
+    FriendMessageRecall(FriendMessageRecall),
+    FriendPoke(FriendPoke),
+    GroupPoke(GroupPoke),
+    FriendRequest(FriendRequest),
+    GroupRequest(GroupRequest),
+    MetaEvent(MetaEvent),
+    Unknown
 }
