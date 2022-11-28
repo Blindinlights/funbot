@@ -1,5 +1,7 @@
 //web server
 #![allow(dead_code,unused)]
+use std::io::Error;
+
 use actix_web::{post, App, HttpResponse, HttpServer, Responder};
 use crate::event::events::*;
 use serde_json;
@@ -18,51 +20,51 @@ pub async fn build_server(ip:&str,port:u16) -> std::io::Result<()> {
     .run()
     .await
 }
-pub fn get_event(event:&serde_json::Value)->Event{
+pub fn get_event(event:&serde_json::Value)->Result<Event,Error>{
     let post_type = event["post_type"].as_str().unwrap();
     match post_type{
         "message"=>{
             let message_type = event["message_type"].as_str().unwrap();
             match message_type{
-                "private"=>Event::PrivateMessage(serde_json::from_value(event.clone()).unwrap()),
-                "group"=>Event::GroupMessage(serde_json::from_value(event.clone()).unwrap()),
-                _=>Event::Unknown
+                "private"=>Ok(Event::PrivateMessage(serde_json::from_value(event.clone())?)),
+                "group"=>Ok(Event::GroupMessage(serde_json::from_value(event.clone())?)),
+                _=>Ok(Event::Unknown)
             }
         },
         "notice"=>{
             let notice_type = event["notice_type"].as_str().unwrap();
             match notice_type{
-                "group_upload"=>Event::GroupFileUpload(serde_json::from_value(event.clone()).unwrap()),
-                "group_admin"=>Event::GroupAdminChange(serde_json::from_value(event.clone()).unwrap()),
-                "group_decrease"=>Event::GroupMemberReduce(serde_json::from_value(event.clone()).unwrap()),
-                "group_increase"=>Event::GroupMemberIncrease(serde_json::from_value(event.clone()).unwrap()),
-                "group_ban"=>Event::GroupMute(serde_json::from_value(event.clone()).unwrap()),
-                "friend_add"=>Event::FriendAdd(serde_json::from_value(event.clone()).unwrap()),
-                "group_recall"=>Event::GroupMessageRecall(serde_json::from_value(event.clone()).unwrap()),
-                "friend_recall"=>Event::FriendMessageRecall(serde_json::from_value(event.clone()).unwrap()),
+                "group_upload"=>Ok(Event::GroupFileUpload(serde_json::from_value(event.clone()).unwrap())),
+                "group_admin"=>Ok(Event::GroupAdminChange(serde_json::from_value(event.clone()).unwrap())),
+                "group_decrease"=>Ok(Event::GroupMemberReduce(serde_json::from_value(event.clone()).unwrap())),
+                "group_increase"=>Ok(Event::GroupMemberIncrease(serde_json::from_value(event.clone()).unwrap())),
+                "group_ban"=>Ok(Event::GroupMute(serde_json::from_value(event.clone()).unwrap())),
+                "friend_add"=>Ok(Event::FriendAdd(serde_json::from_value(event.clone()).unwrap())),
+                "group_recall"=>Ok(Event::GroupMessageRecall(serde_json::from_value(event.clone()).unwrap())),
+                "friend_recall"=>Ok(Event::FriendMessageRecall(serde_json::from_value(event.clone()).unwrap())),
                 "poke"=>{
                     let sub_type = event["sub_type"].as_str().unwrap();
                     match sub_type{
-                        "friend"=>Event::FriendPoke(serde_json::from_value(event.clone()).unwrap()),
-                        "group"=>Event::GroupPoke(serde_json::from_value(event.clone()).unwrap()),
-                        _=>Event::Unknown
+                        "friend"=>Ok(Event::FriendPoke(serde_json::from_value(event.clone()).unwrap())),
+                        "group"=>Ok(Event::GroupPoke(serde_json::from_value(event.clone()).unwrap())),
+                        _=>Ok(Event::Unknown)
                     }
                 },
-                _=>Event::Unknown
+                _=>Ok(Event::Unknown)
             }
         },
     
         "request"=>{
             let request_type = event["request_type"].as_str().unwrap();
             match request_type{
-                "friend"=>Event::FriendRequest(serde_json::from_value(event.clone()).unwrap()),
-                "group"=>Event::GroupRequest(serde_json::from_value(event.clone()).unwrap()),
-                _=>Event::Unknown
+                "friend"=>Ok(Event::FriendRequest(serde_json::from_value(event.clone()).unwrap())),
+                "group"=>Ok(Event::GroupRequest(serde_json::from_value(event.clone()).unwrap())),
+                _=>Ok(Event::Unknown)
             }
         },
-        "meta_event"=>Event::MetaEvent(serde_json::from_value(event.clone()).unwrap()),
+        "meta_event"=>Ok(Event::MetaEvent(serde_json::from_value(event.clone()).unwrap())),
     
-        _=>Event::Unknown
+        _=>Ok(Event::Unknown)
     }
 }  
 

@@ -10,6 +10,7 @@ pub fn post_api(input: TokenStream) -> TokenStream {
         //#[async_trait::async_trait]
         impl PostApi for #ident{
              fn post(&self)->serde_json::Value{
+                //tokio::runtime::Runtime::new().unwrap().block_on(post_reqwest(&self));
                // tokio::runtime::Runtime::new().unwrap().block_on(post_reqwest(&self))
                 todo!()
             }
@@ -33,12 +34,18 @@ pub fn api_name(input: TokenStream) -> TokenStream {
         }
         i += 1;
     }
+    
     let name = name.into_iter().collect::<String>().to_lowercase();
+    //if contains 'message' replace all 'message' to 'msg'
+    let name = name.replace("message", "msg");
+    //delete first '_'
+    let name = name.trim_start_matches('_').to_string(); 
     let gen =quote!(
         impl ApiName for #ident{
             fn name(&self)->String{
                 #name.to_string()
             }
+          
         }
     );
     gen.into()
@@ -81,7 +88,8 @@ pub fn handler(_: TokenStream, item: TokenStream) -> TokenStream {
         
         #[rustqq::async_trait::async_trait]
         impl ::rustqq::app::app::AppServiceFactory for #ident{
-            async fn register(&self,event:&Event)
+            async fn register(&self,event:&Event)->Result<(),Box<dyn std::error::Error>> 
+
             #block
         }
     );

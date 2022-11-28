@@ -1,15 +1,43 @@
-{
-    "post_type": "message",
-    "message_type": "private",
-    "time": 1669572325,
-    "self_id": 2834957564,
-    "sub_type": "friend",
-    "raw_message": "hi",
-    "font": 0,
-    "sender": {
-        "age": 0,
-        "nickname": "Blindinlights",
-        "sex": "unknown",
-        "user_id": 1057584970
+[
+    {
+        "post_type": "message",
+        "message_type": "private",
+        "time": 1669572325,
+        "self_id": 2834957564,
+        "sub_type": "friend",
+        "raw_message": "hi",
+        "font": 0,
+        "sender": {
+            "age": 0,
+            "nickname": "Blindinlights",
+            "sex": "unknown",
+            "user_id": 1057584970
+        }
+    },
+    {
+        "post_type": "message",
+        "message_type": "group",
+        "time": 1669629526,
+        "self_id": 2834957564,
+        "sub_type": "normal",
+        "message": "hi",
+        "message_seq": 77787,
+        "raw_message": "hi",
+        "sender": {
+            "age": 0,
+            "area": "",
+            "card": "",
+            "level": "",
+            "nickname": "Blindinlights",
+            "role": "member",
+            "sex": "unknown",
+            "title": "",
+            "user_id": 1057584970
+        },
+        "font": 0,
+        "group_id": 256658318,
+        "user_id": 1057584970,
+        "message_id": 1820893628,
+        "anonymous": null
     }
-}
+]

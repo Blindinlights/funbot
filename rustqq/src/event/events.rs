@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 extern crate proc_macro;
 use codegen::Meassages;
+
 macro_rules! make_event{
     (
      $(#[$meta:meta])*
@@ -13,7 +14,7 @@ macro_rules! make_event{
     ) => {
 
             $(#[$meta])*
-            #[derive(serde::Serialize,serde::Deserialize)]
+            #[derive(serde::Serialize,serde::Deserialize,Debug)]
             pub struct $struct_name{
                 pub post_type: String,
                 pub self_id: i64,
@@ -47,7 +48,7 @@ macro_rules! make_msg_event{
                 message:String,
                 raw_message:String,
                 font:i32,
-                sender:String,
+                sender:Sender,
                 $(
 
                 pub $field_name : $field_type,
@@ -88,7 +89,7 @@ macro_rules! make_notice_event {
 //         temp_source:i64,
 //     }
 // }
-#[derive(serde::Serialize,serde::Deserialize)]
+#[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct Sender{
     age:i32,
     nickname:String,
@@ -112,15 +113,21 @@ make_msg_event! {
     //#[derive(serde::Serialize,serde::Deserialize)]
     struct GroupMessage{
         group_id:i64,
-        anonymous:bool,
+        anonymous:Option<Anonymous>,
     }
 }
-#[derive(serde::Serialize,serde::Deserialize)]
+#[derive(serde::Serialize,serde::Deserialize,Debug)]
 pub struct FileInfo {
     id: String,
     name: String,
     size: i64,
     busid: i64,
+}
+#[derive(serde::Serialize,serde::Deserialize,Debug)]
+pub struct Anonymous{
+    id:i64,
+    name:String,
+    flag:String,
 }
 make_notice_event! {
     struct GroupFileUpload{
@@ -224,6 +231,7 @@ make_event!{
         interval:i64,
     }
 }
+#[derive(Debug)]
 pub enum Event {
     PrivateMessage(PrivateMessage),
     GroupMessage(GroupMessage),
