@@ -535,6 +535,7 @@ name = "funbot"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "rand",
  "reqwest",
  "rustqq",
  "serde",
