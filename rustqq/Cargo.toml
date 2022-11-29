@@ -13,3 +13,4 @@ serde = { version = "1.0.147", features = ["derive"] }
 actix-web = { version = "4.0.0-beta.8", features = ["rustls"] }
 async-trait="0.1.51"
 codegen={path="../codegen"}
+dyn-clone="1.0.4"

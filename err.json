@@ -1,0 +1,96 @@
+[{
+	"resource": "/home/blindinlights/Projects/funbot/rustqq/src/server/server.rs",
+	"owner": "rustc",
+	"code": {
+		"value": "Click for full compiler diagnostic",
+		"target": {
+			"$mid": 1,
+			"external": "rust-analyzer-diagnostics-view:/diagnostic%20message?0#file%3A%2F%2F%2Fhome%2Fblindinlights%2FProjects%2Ffunbot%2Frustqq%2Fsrc%2Fserver%2Fserver.rs",
+			"path": "/diagnostic message",
+			"scheme": "rust-analyzer-diagnostics-view",
+			"query": "0",
+			"fragment": "file:///home/blindinlights/Projects/funbot/rustqq/src/server/server.rs"
+		}
+	},
+	"severity": 8,
+	"message": "`(dyn Fn(events::Event) + 'static)` cannot be shared between threads safely\nthe trait `Sync` is not implemented for `(dyn Fn(events::Event) + 'static)`\nrequired for `Unique<(dyn Fn(events::Event) + 'static)>` to implement `Sync`\nrequired for `Unique<Box<(dyn Fn(events::Event) + 'static)>>` to implement `Sync`\nrequired because it appears within the type `&app::app::App`\nrequired for `&&app::app::App` to implement `Send`",
+	"source": "rustc",
+	"startLineNumber": 37,
+	"startColumn": 22,
+	"endLineNumber": 37,
+	"endColumn": 74,
+	"relatedInformation": [
+		{
+			"startLineNumber": 37,
+			"startColumn": 5,
+			"endLineNumber": 37,
+			"endColumn": 20,
+			"message": "required by a bound introduced by this call",
+			"resource": "/home/blindinlights/Projects/funbot/rustqq/src/server/server.rs"
+		},
+		{
+			"startLineNumber": 1,
+			"startColumn": 1,
+			"endLineNumber": 1,
+			"endColumn": 1,
+			"message": "required because it appears within the type `Box<(dyn Fn(events::Event) + 'static)>`",
+			"resource": "/home/blindinlights/Projects/funbot/rustqq/src/lib.rs"
+		},
+		{
+			"startLineNumber": 1,
+			"startColumn": 1,
+			"endLineNumber": 1,
+			"endColumn": 1,
+			"message": "required because it appears within the type `alloc::raw_vec::RawVec<Box<(dyn Fn(events::Event) + 'static)>>`",
+			"resource": "/home/blindinlights/Projects/funbot/rustqq/src/lib.rs"
+		},
+		{
+			"startLineNumber": 1,
+			"startColumn": 1,
+			"endLineNumber": 1,
+			"endColumn": 1,
+			"message": "required because it appears within the type `Vec<Box<(dyn Fn(events::Event) + 'static)>>`",
+			"resource": "/home/blindinlights/Projects/funbot/rustqq/src/lib.rs"
+		},
+		{
+			"startLineNumber": 7,
+			"startColumn": 12,
+			"endLineNumber": 7,
+			"endColumn": 15,
+			"message": "required because it appears within the type `app::app::App`",
+			"resource": "/home/blindinlights/Projects/funbot/rustqq/src/app/app.rs"
+		},
+		{
+			"startLineNumber": 17,
+			"startColumn": 17,
+			"endLineNumber": 17,
+			"endColumn": 31,
+			"message": "required because it's used within this closure",
+			"resource": "/home/blindinlights/Projects/funbot/rustqq/src/server/server.rs"
+		},
+		{
+			"startLineNumber": 37,
+			"startColumn": 22,
+			"endLineNumber": 37,
+			"endColumn": 29,
+			"message": "required because it's used within this closure",
+			"resource": "/home/blindinlights/Projects/funbot/rustqq/src/server/server.rs"
+		},
+		{
+			"startLineNumber": 84,
+			"startColumn": 20,
+			"endLineNumber": 84,
+			"endColumn": 24,
+			"message": "required by a bound in `HttpServer::<F, I, S, B>::new`",
+			"resource": "/home/blindinlights/.cargo/registry/src/github.com-1ecc6299db9ec823/actix-web-4.2.1/src/server.rs"
+		},
+		{
+			"startLineNumber": 37,
+			"startColumn": 74,
+			"endLineNumber": 37,
+			"endColumn": 74,
+			"message": "use parentheses to call this trait object: `(/* events::Event */)`",
+			"resource": "/home/blindinlights/Projects/funbot/rustqq/src/server/server.rs"
+		}
+	]
+}]

@@ -83,11 +83,12 @@ pub fn handler(_: TokenStream, item: TokenStream) -> TokenStream {
     let gen=quote!(
         
         #[allow(non_camel_case_types)]
+        #[derive(Clone)]
         pub struct #ident;
             
         
         #[rustqq::async_trait::async_trait]
-        impl ::rustqq::app::app::AppServiceFactory for #ident{
+        impl ::rustqq::app::app::EventHandle for #ident{
             async fn register(&self,event:&Event)->Result<(),Box<dyn std::error::Error>> 
 
             #block
