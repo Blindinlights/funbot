@@ -1,7 +1,6 @@
 /target
 /rustqq/target
 /codegen/target
-/.idea
 /err.json
 /a.json
 /crawl/.idea
