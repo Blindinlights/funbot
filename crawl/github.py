@@ -34,8 +34,8 @@ def get_github_repo_property(repo_url):
             ret['image']=meta.get('content')
         if meta.get('property')=='og:description':
             ret['description']=meta.get('content')
-    title=soup.find('title').text
-    ret['title']=title
+    #title=soup.find('title').text
+    #ret['title']=title
     return ret
     
     

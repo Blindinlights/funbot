@@ -1,4 +1,4 @@
 import github
-url = 'https://www.zhihu.com/question/569763448'
+url = 'https://github.com/Blindinlights-cc/funbot'
 res=github.get_github_repo_property(url)
 print(res)

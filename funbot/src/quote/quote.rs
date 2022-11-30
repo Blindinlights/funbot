@@ -38,6 +38,8 @@ pub async fn bing_pic(event: Event) ->Result<(),Box<dyn std::error::Error>>{
             let cmd =e.message.split(" ").collect::<Vec<&str>>();
             let mut day=1;
             print!("{:?}",cmd);
+            //remove empty string
+            let cmd:Vec<&str>=cmd.into_iter().filter(|&x| x != "").collect();
             if  cmd.len()<=1{
                 e.reply("获取必应壁纸指令\n示例：\n \\bing_pic 1 \n最多获取近七天的壁纸").await?;
                 return Ok(());
