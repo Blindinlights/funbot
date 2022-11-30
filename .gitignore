@@ -2,3 +2,7 @@
 /rustqq/target
 /codegen/target
 /.idea
+/err.json
+/a.json
+/crawl/.idea
+/crawl/__pycache__

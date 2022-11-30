@@ -2,9 +2,9 @@ pub struct RowMessage {
     content: String,
 }
 impl RowMessage {
-    pub fn new(str: &str) -> RowMessage {
+    pub fn new() -> RowMessage {
         Self {
-            content: str.to_string(),
+            content: String::new(),
         }
     }
     pub fn add_plain_txt(&mut self, txt: &str) -> &mut Self {
@@ -40,5 +40,8 @@ impl RowMessage {
     }
     pub fn get_msg(&self) -> &str {
         self.content.as_str()
+    }
+    pub fn clear(&mut self) {
+        self.content.clear();
     }
 }

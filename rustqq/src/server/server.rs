@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use crate::app;
 use crate::event::events::*;
-use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{post, web, App, HttpResponse, HttpServer, Responder, get};
 use serde::de::value;
 use serde_json;
 use std::sync::atomic::AtomicPtr;
@@ -38,6 +38,10 @@ async fn index(data: String, handler: web::Data<app::App>) -> impl Responder {
     }
     HttpResponse::Ok().body("Hello world!")
 }
+#[get("/")]
+async fn index2() -> impl Responder {
+    HttpResponse::Ok().body("Hello world!")
+}
 pub async fn build_server(app: app::App) -> Result<(), Box<dyn std::error::Error>> {
     let app = app.clone();
     //let web_app=
@@ -46,6 +50,7 @@ pub async fn build_server(app: app::App) -> Result<(), Box<dyn std::error::Error
         App::new()
             .app_data(web::Data::new(app.clone()))
             .service(index)
+            .service(index2)
     })
     .bind(ip)?
     .run()

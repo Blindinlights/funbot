@@ -43,7 +43,7 @@ async fn weather_query(event: Event) -> Result<(),Box<dyn std::error::Error>> {
                     humidity,
                     reporttime
                 );
-                let mut pic = RowMessage::new(&"".to_string());
+                let mut pic = RowMessage::new();
                 //add picture
                 //pic.add_image("https://static.zhihu.com/heifetz/assets/guide-cover-5.294257c3.jpg");
                 pic.add_plain_txt(&msg);
