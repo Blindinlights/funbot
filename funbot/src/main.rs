@@ -10,7 +10,7 @@ mod echo;
 mod weather;
 mod quote;
 use echo::{echo_msg,github_url_preview};
-use quote::{one_quote,bing_pic,copy_paste};
+use quote::{one_quote,bing_pic,copy_paste,crazy_thu};
 use weather::{weather_query, weather_report};
 #[actix_web::main]
 async fn main() {
@@ -22,6 +22,7 @@ async fn main() {
     .event(Box::new(bing_pic))
     .event(Box::new(copy_paste))
     .event(Box::new(github_url_preview))
+    .event(Box::new(crazy_thu))
     .run()
     .await;
     

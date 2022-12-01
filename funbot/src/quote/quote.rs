@@ -92,3 +92,14 @@ pub async fn copy_paste(event: Event) ->Result<(),Box<dyn std::error::Error>>{
     }  
     Ok(())
 }
+#[handler]
+pub async fn crazy_thu(event: Event) ->Result<(),Box<dyn std::error::Error>>{
+    if let Event::GroupMessage(e) =event{
+        if e.eq("/crazy_thu"){
+            let index=rand::random::<usize>()%TXTS.len();
+            let saying = TXTS[index];
+            e.reply(saying).await?;
+        }
+    }  
+    Ok(())
+}
