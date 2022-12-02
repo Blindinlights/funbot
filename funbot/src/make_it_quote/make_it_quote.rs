@@ -1,6 +1,6 @@
 use image::{self, GenericImageView};
 use imageproc::drawing;
-use regex;
+use regex::{self, Regex};
 use reqwest;
 use rustqq::client;
 use rustqq::client::message::RowMessage;
@@ -26,8 +26,13 @@ pub async fn make_it_quote(event: Event) -> Result<(), Box<dyn std::error::Error
             if cmd.starts_with("make-it-quote") {
                 let api = client::api::GetMessage::new(id);
                 let res = api.post().await?;
+                let re=Regex::new(r"(\[CQ:.*\])").unwrap();
 
                 let init_msg = res["data"]["message"].as_str().unwrap();
+                if let Some(_)=re.captures(init_msg){
+                    msg.reply("只能引用纯文字").await?;
+                    return Err("只能引用纯文字".into());
+                }
                 let nick_name = res["data"]["sender"]["nickname"].as_str().unwrap();
                 let sender_id = res["data"]["sender"]["user_id"].as_i64().unwrap();
                 get_quote(sender_id, init_msg, nick_name).await?;
