@@ -62,34 +62,3 @@ pub async fn github_url_preview(event: Event) -> Result<(), Box<dyn std::error::
     }
     Ok(())
 }
-
-async fn get_property(url: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let c = ClientBuilder::new()
-        .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0")
-        .http2_prior_knowledge()
-        .build()
-        .unwrap();
-    let res = c.get(url).send().await?;
-    let text = res.text().await?;
-    let docment = nipper::Document::from(text.as_str());
-    let title: &str = &docment
-        .select("head > meta:nth-child(108)")
-        .attr("content")
-        .unwrap();
-    let description: &str = &docment
-        .select("head > meta:nth-child(110)")
-        .attr("content")
-        .unwrap();
-    let image_url: &str = &docment
-        .select("head > meta:nth-child(84)")
-        .attr("content")
-        .unwrap();
-    let mut msg = RowMessage::new();
-    let msg = msg
-        .add_plain_txt(title)
-        .shift_line()
-        .add_plain_txt(description)
-        .shift_line()
-        .add_image(image_url);
-    Ok(msg.get_msg().to_string())
-}

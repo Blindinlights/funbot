@@ -13,6 +13,7 @@ pub async fn post_reqwest<T: Serialize + ApiName>(api: &T) -> Result<Value,Box<d
     let client = Client::new();
     let res = client.post(&api_url).json(api).send().await?;
     let res = res.text().await.unwrap();
+    println!("res:{}", res);
     let res: serde_json::Value = serde_json::from_str(&res)?;
     println!("res: {:?}", res);
     Ok(res)
@@ -37,6 +38,10 @@ pub struct SendPrivateMessage {
     group_id: i64,
     message: String,
     auto_space: bool,
+}
+#[derive(Serialize, Deserialize, ApiName)]
+pub struct GetMessage {
+    message_id: i64,
 }
 
 #[derive(Serialize, Deserialize, ApiName)]
@@ -71,3 +76,12 @@ impl SendGroupMessage {
         
     }
 }
+impl GetMessage {
+    pub fn new(message_id: i64) -> Self {
+        Self { message_id }
+    }
+    pub async fn post(&self)->Result<Value, Box<dyn std::error::Error>> {
+        Ok(post_reqwest(self).await?)
+    }
+}
+    
