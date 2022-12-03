@@ -68,6 +68,7 @@ async fn get_pic(
     file_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let url = format!("http://q1.qlogo.cn/g?b=qq&nk={}&s=640", id);
+    let nick_name=format!("--{}",nick_name);
     let mut resp = reqwest::get(&url).await?;
     let mut buf = resp.bytes().await?.to_vec();
     let img = image::load_from_memory(&buf)?;
@@ -158,7 +159,7 @@ async fn get_pic(
         .map(|g| g.scaled(nick_name_scale).h_metrics().advance_width)
         .sum::<f32>();
     x = 1280 - 20 - nick_name_width as i32;
-    let nick_name=format!("--{}",nick_name);
+    
     drawing::draw_text_mut(
         &mut canvas,
         font_color,
