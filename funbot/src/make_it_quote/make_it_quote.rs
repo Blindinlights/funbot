@@ -45,6 +45,7 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 path.push("funbot/src/images/");
                 path.push(file_name);
                 let path = path.to_str().unwrap();
+                file_name=path.to_string();
                 get_pic(sender_id, init_msg, nick_name, path).await?;
                 println!("make-it-quote");
 
@@ -52,6 +53,7 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 let path = "file://".to_owned() + path;
                 raw_msg.add_image(path.as_str());
                 msg.reply(raw_msg.get_msg()).await?;
+                std::fs::remove_file(file_name)?;
             }
         } else {
             println!("no match");
@@ -156,6 +158,7 @@ async fn get_pic(
         .map(|g| g.scaled(nick_name_scale).h_metrics().advance_width)
         .sum::<f32>();
     x = 1280 - 20 - nick_name_width as i32;
+    let nick_name=format!("--{}",nick_name);
     drawing::draw_text_mut(
         &mut canvas,
         font_color,
@@ -163,7 +166,7 @@ async fn get_pic(
         y,
         nick_name_scale,
         &font,
-        nick_name,
+        nick_name.as_str(),
     );
     canvas.save(file_name)?;
     Ok(())
