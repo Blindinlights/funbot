@@ -9,8 +9,9 @@ use rustqq::event::reply_trait::Reply;
 use rustqq::handler;
 use rusttype::{Font, Scale};
 use std::path;
+use rand::{Rng, distributions::Alphanumeric, thread_rng};
 #[handler]
-pub async fn make_it_quote(event: Event) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
     if let Event::GroupMessage(ref msg) = event.clone() {
         //match [CQ:reply,id={id}] <msg>
         let re = regex::Regex::new(r"\[CQ:reply,id=(-?\d+)\]\[CQ:.*]* (.*)").unwrap();
@@ -35,15 +36,19 @@ pub async fn make_it_quote(event: Event) -> Result<(), Box<dyn std::error::Error
                 }
                 let nick_name = res["data"]["sender"]["nickname"].as_str().unwrap();
                 let sender_id = res["data"]["sender"]["user_id"].as_i64().unwrap();
-                get_quote(sender_id, init_msg, nick_name).await?;
-                println!("make-it-quote");
-
+                let  mut file_name:String=thread_rng().sample_iter(Alphanumeric).take(12).map(char::from).collect();
+                file_name.push_str(".png");
                 let mut raw_msg = RowMessage::new();
                 //get absolute path
                 let mut path = path::PathBuf::from("./");
                 path = path.canonicalize()?;
-                path.push("funbot/src/images/temp.png");
+                path.push("funbot/src/images/");
+                path.push(file_name);
                 let path = path.to_str().unwrap();
+                get_pic(sender_id, init_msg, nick_name, path).await?;
+                println!("make-it-quote");
+
+                
                 let path = "file://".to_owned() + path;
                 raw_msg.add_image(path.as_str());
                 msg.reply(raw_msg.get_msg()).await?;
@@ -54,13 +59,16 @@ pub async fn make_it_quote(event: Event) -> Result<(), Box<dyn std::error::Error
     }
     Ok(())
 }
-async fn get_quote(qq: i64, msg: &str, nick_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    println!("qq:{}", qq);
-    let url = format!("https://q1.qlogo.cn/g?b=qq&nk={}&s=640", qq);
-    println!("url:{}", url);
-    let buf = reqwest::get(url).await?.bytes().await?.to_vec();
+async fn get_pic(
+    id: i64,
+    msg: &str,
+    nick_name: &str,
+    file_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let url = format!("http://q1.qlogo.cn/g?b=qq&nk={}&s=640", id);
+    let mut resp = reqwest::get(&url).await?;
+    let mut buf = resp.bytes().await?.to_vec();
     let img = image::load_from_memory(&buf)?;
-    let mut canvas = image::RgbaImage::new(1280, 640); // Create a canvas
     let mut avg_color = img.pixels().map(|p| p.2).fold((0, 0, 0), |(r, g, b), p| {
         (r + p[0] as u32, g + p[1] as u32, b + p[2] as u32)
     });
@@ -69,27 +77,61 @@ async fn get_quote(qq: i64, msg: &str, nick_name: &str) -> Result<(), Box<dyn st
         avg_color.1 / (img.width() * img.height()) as u32,
         avg_color.2 / (img.width() * img.height()) as u32,
     );
-    let font_color = image::Rgba([
-        255 - avg_color.0 as u8,
-        255 - avg_color.1 as u8,
-        255 - avg_color.2 as u8,
-        255,
-    ]);
+
+    let mut canvas = image::RgbaImage::new(1280, 640);
+
+    for (x, y, p) in img.pixels() {
+        let mut n = image::Rgba([p[0], p[1], p[2], p[3]]);
+        let y_rate = 0.;
+        let start_pix = (320. + 320. * y_rate) as u32;
+        if x > start_pix {
+            let rate = ((x - start_pix) as f32 / (640 - start_pix) as f32)
+                .powi(5)
+                .sqrt()
+                .sqrt();
+            n[0] = ((p[0] as f32 * (1. - rate)) as u32 + (avg_color.0 as f32 * rate) as u32) as u8;
+            n[1] = ((p[1] as f32 * (1. - rate)) as u32 + (avg_color.1 as f32 * rate) as u32) as u8;
+            n[2] = ((p[2] as f32 * (1. - rate)) as u32 + (avg_color.2 as f32 * rate) as u32) as u8;
+        }
+        canvas.put_pixel(x, y, n);
+    }
+    let avg_color = image::Rgba([avg_color.0 as u8, avg_color.1 as u8, avg_color.2 as u8, 255]);
+    canvas.pixels_mut().enumerate().for_each(|(i, p)| {
+        if i % 1280 >=640 {
+            *p = avg_color.clone();
+        }
+    });
     let font_data = include_bytes!("../fonts/YeZiGongChangShanHaiMingChao-2.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
-    let scale = Scale { x: 40.0, y: 40.0 };
-    //let font_scale = Scale { x: 25.0, y: 25.0 };
+    let mut scale = Scale { x: 45.0, y: 45.0 };
+    let font_color = {
+        let mut c = image::Rgba([255, 255, 255, 255]);
+        for i in 0..3 {
+            c[i] = if avg_color[i] > 128 {
+                avg_color[i] - 90
+            } else {
+                avg_color[i] + 90
+            }
+        }
+        c
+    };
     let nick_name_scale = Scale { x: 25.0, y: 25.0 };
-    let quote_from = format!("——{}", nick_name);
     let mut lines: Vec<String> = Vec::new();
     let mut line: String = String::new();
     let mut row_width = 0f32;
     let mut row_height = 0f32;
-    let row_max_width = 560f32;
-    let txt_height;
-    msg.chars().enumerate().for_each(|(_, c)| {
+    let row_max_width = 600f32;
+    let mut txt_height = 0f32;
+    for (i, c) in msg.chars().enumerate() {
         let font_width = font.glyph(c).scaled(scale).h_metrics().advance_width; //获取字符宽度
-        if row_width + font_width > row_max_width {
+        if c=='\n'{
+            lines.push(line.clone());
+            line = String::new();
+            row_width = 0f32;
+            row_height += font.v_metrics(scale).ascent + 10f32;
+        }
+        else if row_width + font_width > row_max_width {
+            println!("{}:{}", i, c);
             lines.push(line.clone());
             line = String::new();
             line.push(c);
@@ -97,23 +139,14 @@ async fn get_quote(qq: i64, msg: &str, nick_name: &str) -> Result<(), Box<dyn st
             row_height += font.v_metrics(scale).ascent + 10f32;
         } else {
             row_width += font_width;
-            //获取字符高度
             line.push(c);
         }
-    });
+    }
     lines.push(line.clone());
     txt_height = row_height;
     let mut x = 660i32;
     let mut y = ((640f32 - txt_height) / 2f32) as i32;
-    drawing::draw_filled_rect_mut(
-        &mut canvas,
-        imageproc::rect::Rect::at(0, 0).of_size(1280, 640),
-        image::Rgba([avg_color.0 as u8, avg_color.1 as u8, avg_color.2 as u8, 255]),
-    );
-    img.pixels().for_each(|(x, y, p)| {
-        canvas.put_pixel(x, y, p);
-    });
-    for (_, line) in lines.iter().enumerate() {
+    for (i, line) in lines.iter().enumerate() {
         drawing::draw_text_mut(&mut canvas, font_color, x, y, scale, &font, line);
         y += font.v_metrics(scale).ascent as i32 + 10;
     }
@@ -122,7 +155,7 @@ async fn get_quote(qq: i64, msg: &str, nick_name: &str) -> Result<(), Box<dyn st
         .glyphs_for(nick_name.chars())
         .map(|g| g.scaled(nick_name_scale).h_metrics().advance_width)
         .sum::<f32>();
-    x = 1280 - 100 - nick_name_width as i32;
+    x = 1280 - 20 - nick_name_width as i32;
     drawing::draw_text_mut(
         &mut canvas,
         font_color,
@@ -130,13 +163,9 @@ async fn get_quote(qq: i64, msg: &str, nick_name: &str) -> Result<(), Box<dyn st
         y,
         nick_name_scale,
         &font,
-        quote_from.as_str(),
+        nick_name,
     );
-    //get absolute path
-    let mut path = path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push("src/images/temp.png");
-    let path = path.to_str().unwrap();
-    canvas.save(path)?;
+    canvas.save(file_name)?;
     Ok(())
 }
 #[cfg(test)]
