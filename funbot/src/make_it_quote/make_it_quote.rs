@@ -1,5 +1,6 @@
 use image::{self, GenericImageView};
 use imageproc::drawing;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::{self, Regex};
 use reqwest;
 use rustqq::client;
@@ -9,7 +10,6 @@ use rustqq::event::reply_trait::Reply;
 use rustqq::handler;
 use rusttype::{Font, Scale};
 use std::path;
-use rand::{Rng, distributions::Alphanumeric, thread_rng};
 #[handler]
 pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
     if let Event::GroupMessage(ref msg) = event.clone() {
@@ -27,16 +27,24 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
             if cmd.starts_with("make-it-quote") {
                 let api = client::api::GetMessage::new(id);
                 let res = api.post().await?;
-                let re=Regex::new(r"(\[CQ:.*\])").unwrap();
+                let re = Regex::new(r"(\[CQ:.*\])").unwrap();
 
                 let init_msg = res["data"]["message"].as_str().unwrap();
-                if let Some(_)=re.captures(init_msg){
+                if let Some(_) = re.captures(init_msg) {
                     msg.reply("只能引用纯文字").await?;
                     return Err("只能引用纯文字".into());
                 }
+                if init_msg.len() > 120 {
+                    msg.reply("引用的文字太长了").await?;
+                    return Err("引用的文字太长了".into());
+                }
                 let nick_name = res["data"]["sender"]["nickname"].as_str().unwrap();
                 let sender_id = res["data"]["sender"]["user_id"].as_i64().unwrap();
-                let  mut file_name:String=thread_rng().sample_iter(Alphanumeric).take(12).map(char::from).collect();
+                let mut file_name: String = thread_rng()
+                    .sample_iter(Alphanumeric)
+                    .take(12)
+                    .map(char::from)
+                    .collect();
                 file_name.push_str(".png");
                 let mut raw_msg = RowMessage::new();
                 //get absolute path
@@ -45,11 +53,10 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 path.push("funbot/src/images/");
                 path.push(file_name);
                 let path = path.to_str().unwrap();
-                file_name=path.to_string();
+                file_name = path.to_string();
                 get_pic(sender_id, init_msg, nick_name, path).await?;
                 println!("make-it-quote");
 
-                
                 let path = "file://".to_owned() + path;
                 raw_msg.add_image(path.as_str());
                 msg.reply(raw_msg.get_msg()).await?;
@@ -68,7 +75,7 @@ async fn get_pic(
     file_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let url = format!("http://q1.qlogo.cn/g?b=qq&nk={}&s=640", id);
-    let nick_name=format!("--{}",nick_name);
+    let nick_name = format!("--{}", nick_name);
     let mut resp = reqwest::get(&url).await?;
     let mut buf = resp.bytes().await?.to_vec();
     let img = image::load_from_memory(&buf)?;
@@ -100,7 +107,7 @@ async fn get_pic(
     }
     let avg_color = image::Rgba([avg_color.0 as u8, avg_color.1 as u8, avg_color.2 as u8, 255]);
     canvas.pixels_mut().enumerate().for_each(|(i, p)| {
-        if i % 1280 >=640 {
+        if i % 1280 >= 640 {
             *p = avg_color.clone();
         }
     });
@@ -127,13 +134,12 @@ async fn get_pic(
     let mut txt_height = 0f32;
     for (i, c) in msg.chars().enumerate() {
         let font_width = font.glyph(c).scaled(scale).h_metrics().advance_width; //获取字符宽度
-        if c=='\n'{
+        if c == '\n' {
             lines.push(line.clone());
             line = String::new();
             row_width = 0f32;
             row_height += font.v_metrics(scale).ascent + 10f32;
-        }
-        else if row_width + font_width > row_max_width {
+        } else if row_width + font_width > row_max_width {
             println!("{}:{}", i, c);
             lines.push(line.clone());
             line = String::new();
@@ -159,7 +165,7 @@ async fn get_pic(
         .map(|g| g.scaled(nick_name_scale).h_metrics().advance_width)
         .sum::<f32>();
     x = 1280 - 20 - nick_name_width as i32;
-    
+
     drawing::draw_text_mut(
         &mut canvas,
         font_color,
