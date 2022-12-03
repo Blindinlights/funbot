@@ -111,7 +111,7 @@ async fn get_pic(
             *p = avg_color.clone();
         }
     });
-    let font_data = include_bytes!("../fonts/YeZiGongChangShanHaiMingChao-2.ttf");
+    let font_data = include_bytes!("../fonts/mergefonts.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
     let mut scale = Scale { x: 45.0, y: 45.0 };
     let font_color = {
