@@ -44,4 +44,8 @@ impl RowMessage {
     pub fn clear(&mut self) {
         self.content.clear();
     }
+    pub fn reply(&mut self,msg_id:i64)->&mut Self{
+        self.content.push_str(format!("[CQ:reply,id={}]",msg_id).as_str());
+        self
+    }
 }

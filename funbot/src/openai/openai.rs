@@ -34,9 +34,24 @@ async fn open_image(event:Event)->Result<(), Box<dyn std::error::Error>>{
             let prompt = msg.message.replace("/prompt", "");
             let image_url = generate_image(prompt.as_str()).await?;
             let mut raw_msg = RowMessage::new();
+            raw_msg.reply(msg.message_id);
             raw_msg.add_image(image_url.as_str());
             msg.reply(raw_msg.get_msg()).await?;
+            return Ok(());
         }
+    }
+    if let Event::PrivateMessage(ref msg) = event.clone() {
+        if msg.start_with("/prompt") {
+            let prompt = msg.message.replace("/prompt", "");
+            let image_url = generate_image(prompt.as_str()).await?;
+            let mut raw_msg = RowMessage::new();
+            raw_msg.reply(msg.message_id);
+            raw_msg.add_image(image_url.as_str());
+            msg.reply(raw_msg.get_msg()).await?;
+            return Ok(());
+            
+        }
+
     }
     Ok(())
 }
