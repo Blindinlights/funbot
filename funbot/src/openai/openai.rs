@@ -13,7 +13,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
         //add header "Content-Type: application/json""Authorization: Bearer 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"
         let res = client.post(url)
             .header("Content-Type", "application/json")
-            .header("Authorization", "Bearer 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")
+            .header("Authorization", "Bearer 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")
             .json(&map)
             .send()
             .await?
