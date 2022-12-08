@@ -22,6 +22,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
         let v: Value = serde_json::from_str(&res)?;
         println!("v:{}", v);
         let image_url = v["data"][0]["url"].as_str().unwrap().to_string();
+
         Ok(image_url)
 }
 #[handler]
