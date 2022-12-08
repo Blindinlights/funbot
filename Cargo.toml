@@ -1,2 +1,2 @@
 [workspace]
-members=["rustqq","codegen","funbot"]git
+members=["rustqq","codegen","funbot"]
