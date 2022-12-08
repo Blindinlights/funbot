@@ -10,10 +10,12 @@ mod echo;
 mod weather;
 mod quote;
 mod make_it_quote;
+mod openai;
 use echo::{echo_msg,github_url_preview};
 use quote::{one_quote,bing_pic,copy_paste,crazy_thu};
 use weather::{weather_query, weather_report};
 use make_it_quote::quote_it;
+use openai::open_image;
 #[actix_web::main]
 async fn main() {
     app::App::new()
@@ -25,6 +27,7 @@ async fn main() {
     .event(Box::new(copy_paste))
     .event(Box::new(github_url_preview))
     .event(Box::new(quote_it))
+    .event(Box::new(open_image))
     .run()
     .await;
     
