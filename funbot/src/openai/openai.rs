@@ -8,7 +8,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
         let mut map=HashMap::new();
         map.insert("prompt", prompt);
         //map.insert("n", "1");
-        map.insert("size", "1024x1024");
+        map.insert("size", "512x512");
 
         //add header "Content-Type: application/json""Authorization: Bearer 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"
         let api_key=std::env::var("OPENAI_API_KEY")?;
@@ -49,7 +49,7 @@ async fn open_image(event:Event)->Result<(), Box<dyn std::error::Error>>{
             raw_msg.add_image(image_url.as_str());
             msg.reply(raw_msg.get_msg()).await?;
             return Ok(());
-            
+
         }
 
     }
