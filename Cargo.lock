@@ -641,6 +641,7 @@ dependencies = [
  "rusttype",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

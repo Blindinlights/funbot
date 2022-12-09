@@ -15,7 +15,7 @@ use echo::{echo_msg,github_url_preview};
 use quote::{one_quote,bing_pic,copy_paste,crazy_thu};
 use weather::{weather_query, weather_report};
 use make_it_quote::quote_it;
-use openai::open_image;
+use openai::{open_image,open_journey};
 #[actix_web::main]
 async fn main() {
     app::App::new()
@@ -28,6 +28,7 @@ async fn main() {
     .event(Box::new(github_url_preview))
     .event(Box::new(quote_it))
     .event(Box::new(open_image))
+    .event(Box::new(open_journey))
     .run()
     .await;
     
