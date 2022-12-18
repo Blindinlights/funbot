@@ -16,5 +16,5 @@ image = { version = "0.24.5", default-features = false, features = ["jpeg", "png
 imageproc = "0.23.0"
 rusttype = "0.9.3"
 regex = "1.7.0"
-tokio = { version = "1.0.2", features = ["full"] }
+tokio = { version = "1.0.2", features = ["full","macros"] }
 scraper = "0.13.0"

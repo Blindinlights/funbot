@@ -92,14 +92,18 @@ async fn get_page_info(url: &str) -> Result<String, Box<dyn std::error::Error>> 
         Some(i) => i.value().attr("content").unwrap(),
         None => "",
     };
-
+    let image = if image.starts_with("//") {
+        format!("https:{}", image)
+    } else {
+        image.to_string()
+    };
     let raw_msg = RowMessage::new()
         .add_plain_txt(title.as_str())
         .shift_line()
         .add_plain_txt("========================\n")
         .add_plain_txt(description.as_str())
         .shift_line()
-        .add_image(image)
+        .add_image(image.as_str())
         .get_msg()
         .to_string();
     Ok(raw_msg)
@@ -110,7 +114,7 @@ mod test {
     use super::*;
     #[tokio::test]
     async fn test_get_page_info() {
-        let url = "https://twitter.com/LappanArt/status/1603738690383028224?s=19";
+        let url = "https://bilibili.com/video/BV1mP4y1D7Mu";
         let res = get_page_info(url).await.unwrap();
         println!("{}", res);
     }
