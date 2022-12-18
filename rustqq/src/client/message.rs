@@ -29,6 +29,9 @@ impl RowMessage {
         self
     }
     pub fn add_image(&mut self, url: &str) -> &mut Self {
+        if url.is_empty(){
+            return self;
+        }
         self.content
             .push_str(format!("[CQ:image,file={}]", url).as_str());
         self

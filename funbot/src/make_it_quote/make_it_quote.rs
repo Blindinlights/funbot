@@ -15,20 +15,13 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
     if let Event::GroupMessage(ref msg) = event.clone() {
         //match [CQ:reply,id={id}] <msg>
         let re = regex::Regex::new(r"\[CQ:reply,id=(-?\d+)\]\[CQ:.*]* (.*)").unwrap();
-        println!("make-it-quote");
-        println!("{:?}", msg.message);
         if let Some(e) = re.captures(msg.message.as_str()) {
             let id = e.get(1).unwrap().as_str().parse::<i64>()?;
-            println!("id:{}", id);
-            //get last cap
             let cmd = e.get(2).unwrap().as_str();
-            println!("cmd:{}", cmd);
-
             if cmd.starts_with("make-it-quote") {
                 let api = client::api::GetMessage::new(id);
                 let res = api.post().await?;
                 let re = Regex::new(r"(\[CQ:.*\])").unwrap();
-
                 let init_msg = res["data"]["message"].as_str().unwrap();
                 if let Some(_) = re.captures(init_msg) {
                     msg.reply("只能引用纯文字").await?;
@@ -55,8 +48,6 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 let path = path.to_str().unwrap();
                 file_name = path.to_string();
                 get_pic(sender_id, init_msg, nick_name, path).await?;
-                println!("make-it-quote");
-
                 let path = "file://".to_owned() + path;
                 raw_msg.add_image(path.as_str());
                 msg.reply(raw_msg.get_msg()).await?;
@@ -76,8 +67,8 @@ async fn get_pic(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let url = format!("http://q1.qlogo.cn/g?b=qq&nk={}&s=640", id);
     let nick_name = format!("--{}", nick_name);
-    let mut resp = reqwest::get(&url).await?;
-    let mut buf = resp.bytes().await?.to_vec();
+    let resp = reqwest::get(&url).await?;
+    let buf = resp.bytes().await?.to_vec();
     let img = image::load_from_memory(&buf)?;
     let mut avg_color = img.pixels().map(|p| p.2).fold((0, 0, 0), |(r, g, b), p| {
         (r + p[0] as u32, g + p[1] as u32, b + p[2] as u32)
@@ -113,7 +104,7 @@ async fn get_pic(
     });
     let font_data = include_bytes!("../fonts/mergefonts.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
-    let mut scale = Scale { x: 45.0, y: 45.0 };
+    let  scale = Scale { x: 45.0, y: 45.0 };
     let font_color = {
         let mut c = image::Rgba([255, 255, 255, 255]);
         for i in 0..3 {
@@ -131,7 +122,7 @@ async fn get_pic(
     let mut row_width = 0f32;
     let mut row_height = 0f32;
     let row_max_width = 600f32;
-    let mut txt_height = 0f32;
+    let txt_height ;
     for (i, c) in msg.chars().enumerate() {
         let font_width = font.glyph(c).scaled(scale).h_metrics().advance_width; //获取字符宽度
         if c == '\n' {
@@ -155,7 +146,7 @@ async fn get_pic(
     txt_height = row_height;
     let mut x = 660i32;
     let mut y = ((640f32 - txt_height) / 2f32) as i32;
-    for (i, line) in lines.iter().enumerate() {
+    for (_, line) in lines.iter().enumerate() {
         drawing::draw_text_mut(&mut canvas, font_color, x, y, scale, &font, line);
         y += font.v_metrics(scale).ascent as i32 + 10;
     }
@@ -177,14 +168,4 @@ async fn get_pic(
     );
     canvas.save(file_name)?;
     Ok(())
-}
-#[cfg(test)]
-mod test {
-    use std::path;
-    #[test]
-    fn test() {
-        let mut path = path::PathBuf::from("./");
-        path = path.canonicalize().unwrap();
-        println!("{:?}", path);
-    }
 }

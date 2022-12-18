@@ -1,6 +1,7 @@
+#[allow(unused)]
 use std::collections::HashMap;
 use reqwest;
-use rustqq::{handler, event::{self, Event, Meassages, Reply}, client::message::RowMessage};
+use rustqq::{handler, event::{Event, Meassages, Reply}, client::message::RowMessage};
 use  serde_json::Value;
 async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
         let client = reqwest::Client::new();

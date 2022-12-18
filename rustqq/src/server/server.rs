@@ -1,56 +1,36 @@
 //web server
-#![allow(dead_code, unused)]
 use std::io::Error;
-use std::rc::Rc;
-use std::sync::Arc;
 
 use crate::app;
 use crate::event::events::*;
-use actix_web::{post, web, App, HttpResponse, HttpServer, Responder, get};
-use serde::de::value;
+use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
 use serde_json;
-use std::sync::atomic::AtomicPtr;
-use tokio::sync::Mutex;
+
 #[post("/")]
 async fn index(data: String, handler: web::Data<app::App>) -> impl Responder {
     println!("data:{}", data);
     let value: serde_json::Value = serde_json::from_str(&data).unwrap();
     if let Ok(event) = get_event(&value) {
-        println!("get event");
         match event {
-            Event::GroupMessage(_) => {
-                println!("group message");
-                //echo(event).await;
-            }
             Event::Unknown => {
-                println!("unknown event");
+                //println!("unknown event");
                 return actix_web::HttpResponse::Ok().body("Unknow event type");
             }
             _ => {}
         }
-        println!("event: {:?}", event);
-        let res=(*handler).handle_event(&event).await;
-        if let Err(err)=res{
-            println!("err:{}",err);
+        let res = (*handler).handle_event(&event).await;
+        if let Err(err) = res {
+            println!("err:{}", err);
         }
-    } else {
-        println!("error");
     }
     HttpResponse::Ok().body("Hello world!")
 }
-#[get("/")]
-async fn index2() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
-}
 pub async fn build_server(app: app::App) -> Result<(), Box<dyn std::error::Error>> {
-    let app = app.clone();
-    //let web_app=
     let ip = ("127.0.0.1", 8755);
-    let server = HttpServer::new(move || {
+    HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(app.clone()))
             .service(index)
-            .service(index2)
     })
     .bind(ip)?
     .run()

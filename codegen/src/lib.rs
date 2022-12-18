@@ -4,9 +4,9 @@ use quote::quote;
 use syn::{self, DeriveInput};
 #[proc_macro_derive(PostApi)]
 pub fn post_api(input: TokenStream) -> TokenStream {
-    let ast:DeriveInput = syn::parse(input).unwrap();
-    let ident=ast.ident;
-    let gen =quote!(
+    let ast: DeriveInput = syn::parse(input).unwrap();
+    let ident = ast.ident;
+    let gen = quote!(
         //#[async_trait::async_trait]
         impl PostApi for #ident{
              fn post(&self)->serde_json::Value{
@@ -17,13 +17,12 @@ pub fn post_api(input: TokenStream) -> TokenStream {
         }
     );
     gen.into()
- 
 }
 #[proc_macro_derive(ApiName)]
 pub fn api_name(input: TokenStream) -> TokenStream {
-    let ast:DeriveInput = syn::parse(input).unwrap();
-    let ident=ast.ident;
-    let name=ident.to_string();
+    let ast: DeriveInput = syn::parse(input).unwrap();
+    let ident = ast.ident;
+    let name = ident.to_string();
     //change name to underline case
     let mut name = name.chars().collect::<Vec<char>>();
     let mut i = 0;
@@ -34,28 +33,27 @@ pub fn api_name(input: TokenStream) -> TokenStream {
         }
         i += 1;
     }
-    
+
     let name = name.into_iter().collect::<String>().to_lowercase();
     //if contains 'message' replace all 'message' to 'msg'
     let name = name.replace("message", "msg");
     //delete first '_'
-    let name = name.trim_start_matches('_').to_string(); 
-    let gen =quote!(
+    let name = name.trim_start_matches('_').to_string();
+    let gen = quote!(
         impl ApiName for #ident{
             fn name(&self)->String{
                 #name.to_string()
             }
-          
+
         }
     );
     gen.into()
- 
 }
 #[proc_macro_derive(Meassages)]
 pub fn meassages(input: TokenStream) -> TokenStream {
-    let ast:DeriveInput = syn::parse(input).unwrap();
-    let ident=ast.ident;
-    let gen =quote!(
+    let ast: DeriveInput = syn::parse(input).unwrap();
+    let ident = ast.ident;
+    let gen = quote!(
         impl Meassages for #ident{
             fn start_with(&self, s: &str) -> bool {
                 self.message.starts_with(s)
@@ -63,37 +61,36 @@ pub fn meassages(input: TokenStream) -> TokenStream {
             fn eq(&self, s: &str) -> bool {
                 self.message == s
             }
+            fn msg(&self) -> &str {
+                &self.message
+            }
         }
     );
     gen.into()
- 
 }
 #[proc_macro_attribute]
-pub fn handler(_: TokenStream, item: TokenStream) -> TokenStream {
-    let ast:syn::ItemFn=syn::parse(item).unwrap();
-    if ast.sig.asyncness.is_none(){
+pub fn handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let ast: syn::ItemFn = syn::parse(item).unwrap();
+    if ast.sig.asyncness.is_none() {
         panic!("event must be async function");
     }
-    let params=ast.sig.inputs.clone();
-    if params.len()>1{
-        panic!("event function must have only one parameter");
-    }
-    let ident=ast.sig.ident.clone();
-    let block=ast.block.clone();
-    let gen=quote!(
-        
+    let ident = ast.sig.ident.clone();
+
+    let block = ast.block.clone();
+    let gen = quote!(
+
         #[allow(non_camel_case_types)]
         #[derive(Clone)]
         pub struct #ident;
-            
-        
+
+        #[allow(unused)]
         #[rustqq::async_trait::async_trait]
         impl ::rustqq::app::app::EventHandle for #ident{
-            async fn register(&self,event:&Event)->Result<(),Box<dyn std::error::Error>> 
-
-            #block
+            async fn register(&self,event:&Event,data:&Option<::rustqq::app::toml::Value>)->Result<(),Box<dyn std::error::Error>>{
+                
+                #block
+            }
         }
     );
     gen.into()
- 
 }

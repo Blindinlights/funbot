@@ -2,11 +2,10 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use reqwest;
 use rustqq::{
     client::message::RowMessage,
-    event::{self, Event, Meassages, Reply},
+    event::{Event, Meassages, Reply},
     handler,
 };
-use serde_json::Value;
-use std::{collections::HashMap, io::Write, path, string};
+use std::{io::Write, path};
 struct HuggingFace {
     api_key: String,
     url: String,
@@ -64,7 +63,7 @@ fn get_file_name() -> String {
 }
 async fn reply_msg(prompt: String, msg_id: i64) -> Result<(String,String), Box<dyn std::error::Error>> {
     let hf = HuggingFace::open_journey();
-    let mut file_name = get_file_name();
+    let file_name = get_file_name();
     let mut path = path::PathBuf::from("./");
     path = path.canonicalize().unwrap();
     path.push("funbot/src/images/");
@@ -77,7 +76,6 @@ async fn reply_msg(prompt: String, msg_id: i64) -> Result<(String,String), Box<d
     raw_msg.add_image(&path);
     Ok((raw_msg.get_msg().to_string(),path))
 }
-
 #[handler]
 async fn open_journey(event: Event) -> Result<(), std::error::Error> {
     if let Event::GroupMessage(ref msg) = event.clone() {
@@ -97,23 +95,4 @@ async fn open_journey(event: Event) -> Result<(), std::error::Error> {
         }
     }
     Ok(())
-}
-mod tests {
-    use super::*;
-    #[tokio::test]
-    async fn test_open_journey() {
-        let hf = HuggingFace::open_journey();
-        let mut file_name = get_file_name();
-        let mut path = path::PathBuf::from("./");
-        path = path.canonicalize().unwrap();
-        path.push("src/images/");
-        path.push(file_name);
-        let path = path.to_str().unwrap().to_string();
-        println!("path:{}", path);
-        hf.generate_image("我是一个人", path.clone()).await.unwrap();
-        let path = "file://".to_string() + path.as_str();
-        let mut raw_msg = RowMessage::new();
-        raw_msg.add_image(&path);
-        println!("{}", raw_msg.get_msg());
-    }
 }

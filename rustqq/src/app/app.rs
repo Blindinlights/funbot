@@ -1,18 +1,31 @@
 use  crate::event::events::*;
 use crate::server::build_server;
 use dyn_clone::DynClone;
+use toml;
 #[derive(Clone)]
 pub struct App{
     ip:String,
     port:u16,
     pub tasks:Vec<Box<dyn TaskHandle>>,
-    pub handler:Vec<Box<dyn EventHandle>>
+    pub handler:Vec<Box<dyn EventHandle>>,
+    data:Option<toml::Value>
+    
+}
+#[allow(dead_code)]
+pub struct Plugin{
+    commands:Option<Vec<String>>,
+    description:String,
+    name:String,
+    regex:Option<String>,
+    usage:String,
+    options:Option<Vec<String>>,
+
 }
 unsafe impl Send for App{}
 unsafe impl Sync for App{}
 #[async_trait::async_trait]
 pub trait EventHandle:Send + Sync+DynClone{
-    async fn register(&self,event:&Event)->Result<(),Box<dyn std::error::Error>>;
+    async fn register(&self,event:&Event,data:&Option<toml::Value>)->Result<(),Box<dyn std::error::Error>>;
 }
 #[async_trait::async_trait]
 pub trait TaskHandle:Send + Sync+DynClone{
@@ -20,14 +33,14 @@ pub trait TaskHandle:Send + Sync+DynClone{
 }
 dyn_clone::clone_trait_object!(EventHandle);
 dyn_clone::clone_trait_object!(TaskHandle);
-//dyn_clone::clone_trait_object!(TaskHandle);
 impl App{
     pub fn new()->Self{
         Self{
             ip:"127.0.0.1".to_string(),
             port:8080,
             tasks:vec![],
-            handler:vec![]
+            handler:vec![],
+            data:None
         }
     }
     pub  fn socket(&self)->(&str,u16){
@@ -44,7 +57,7 @@ impl App{
     }
     pub async fn handle_event(&self,event:&Event)->Result<(),Box<dyn std::error::Error>>{
         for f in self.handler.iter(){
-            f.register(event.clone()).await?;
+            f.register(event.clone(),&self.data).await?;
         }
         Ok(())
         //todo!()
@@ -60,7 +73,11 @@ impl App{
         build_server(self.clone()).await?;
         //block( build_server(self)).await?;
         Ok(())
-        
-        
+    }
+    pub fn data(&self)->Option<&toml::Value>{
+        self.data.as_ref()
+    }
+    pub fn set_data(&mut self,data:toml::Value){
+        self.data=Some(data);
     }
 }

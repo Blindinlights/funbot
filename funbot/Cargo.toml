@@ -10,10 +10,11 @@ rustqq={path = "../rustqq"}
 actix-web = "4.0.0-beta.8"
 serde = { version = "1.0.118", features = ["derive"] }
 serde_json = "1.0.60"
-reqwest = { version = "0.11.4", features = ["json"] }
+reqwest = { version = "0.11.4", features = ["json","gzip"] }
 rand = "0.8.3"
 image = { version = "0.24.5", default-features = false, features = ["jpeg", "png", "gif"] }
 imageproc = "0.23.0"
 rusttype = "0.9.3"
 regex = "1.7.0"
 tokio = { version = "1.0.2", features = ["full"] }
+scraper = "0.13.0"

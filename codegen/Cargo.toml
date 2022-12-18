@@ -11,5 +11,6 @@ proc-macro2 = "1.0"
 proc-macro-error = { version = "1.0", default-features = false }
 devise = "0.3"
 async-trait = "0.1"
+toml = "0.5"
 [lib]
 proc-macro = true
