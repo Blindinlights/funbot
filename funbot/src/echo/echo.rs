@@ -70,12 +70,10 @@ async fn get_page_info(url: &str) -> Result<String, Box<dyn std::error::Error>> 
 
     let description = document
         .select(&scraper::Selector::parse("meta[name=description]").unwrap())
-        .next()
-        .unwrap();
-    let description = if let Some(d) = description.value().attr("content") {
-        d
-    } else {
-        ""
+        .next();
+    let description = match description {
+        Some(d) => d.value().attr("content").unwrap(),
+        None => "",
     };
     let mut description = description.to_string();
     if description.chars().count() > 100 {
