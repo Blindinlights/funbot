@@ -71,10 +71,12 @@ async fn get_page_info(url: &str) -> Result<String, Box<dyn std::error::Error>> 
     let description = document
         .select(&scraper::Selector::parse("meta[name=description]").unwrap())
         .next()
-        .unwrap()
-        .value()
-        .attr("content")
         .unwrap();
+    let description = if let Some(d) = description.value().attr("content") {
+        d
+    } else {
+        ""
+    };
     let mut description = description.to_string();
     if description.chars().count() > 100 {
         description = description
@@ -110,7 +112,7 @@ mod test {
     use super::*;
     #[tokio::test]
     async fn test_get_page_info() {
-        let url = "https://www.zhihu.com/hot";
+        let url = "https://twitter.com/LappanArt/status/1603738690383028224?s=19";
         let res = get_page_info(url).await.unwrap();
         println!("{}", res);
     }
