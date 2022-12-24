@@ -15,3 +15,6 @@ async-trait="0.1.51"
 codegen={path="../codegen"}
 dyn-clone="1.0.4"
 toml="0.5.8"
+cron="0.12.0"
+chrono="0.4.19"
+uuid={version="1.2.2",features=["v4"]}

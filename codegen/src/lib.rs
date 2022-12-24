@@ -94,3 +94,29 @@ pub fn handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
     );
     gen.into()
 }
+#[proc_macro_attribute]
+pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let ast: syn::ItemFn = syn::parse(item).unwrap();
+    let attr: syn::LitStr = syn::parse(attr).unwrap();
+    let ident = ast.sig.ident.clone();
+    let block = ast.block.clone();
+    let gen = quote!(
+
+        #[allow(non_camel_case_types)]
+        #[derive(Clone)]
+        pub struct #ident;
+
+        #[allow(unused)]
+        #[rustqq::async_trait::async_trait]
+        impl ::rustqq::app::app::TaskHandle for #ident{
+            async fn tasks(&self)->Result<(),Box<dyn std::error::Error>>{
+                #block
+            }
+            fn schedule(&self)->String{
+                #attr.to_string()
+            }
+        }
+    );
+    gen.into()
+
+}

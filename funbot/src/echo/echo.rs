@@ -117,5 +117,20 @@ mod test {
         let url = "https://bilibili.com/video/BV1mP4y1D7Mu";
         let res = get_page_info(url).await.unwrap();
         println!("{}", res);
+
+    }
+    #[tokio::test]
+    async fn tesr_xml(){
+        let msg=r#"[CQ:xml,data=<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <msg serviceID="1">
+            <item layout="4">
+                <title>test title</title>
+                <picture cover="http://url.cn/5CEwIUy"/>
+            </item>
+        </msg>]"#;
+        let api=rustqq::client::api::SendGroupMessage::new(256658318,msg.to_string());
+        if let Err(e)=api.post().await{
+            println!("{}",e);
+        }
     }
 }

@@ -7,13 +7,10 @@ use serde::{Deserialize, Serialize};
 use tokio;
 pub async fn post_reqwest<T: Serialize + ApiName>(api: &T) -> Result<Value,Box<dyn std::error::Error>> {
     let ip = "127.0.0.1:8080";
-    println!("post_reqwest");
     let api_url = format!("http://{}/{}", ip, api.name());
-    println!("api_url:{}", api_url);
     let client = Client::new();
     let res = client.post(&api_url).json(api).send().await?;
     let res = res.text().await.unwrap();
-    println!("res:{}", res);
     let res: serde_json::Value = serde_json::from_str(&res)?;
     println!("res: {:?}", res);
     Ok(res)

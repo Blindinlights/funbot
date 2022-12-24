@@ -29,7 +29,8 @@ pub trait EventHandle:Send + Sync+DynClone{
 }
 #[async_trait::async_trait]
 pub trait TaskHandle:Send + Sync+DynClone{
-    async fn tasks(&self,event:Event)->Result<(),Box<dyn std::error::Error>>;
+    async fn tasks(&self)->Result<(),Box<dyn std::error::Error>>;
+    fn schedule(&self)->String;
 }
 dyn_clone::clone_trait_object!(EventHandle);
 dyn_clone::clone_trait_object!(TaskHandle);
@@ -69,9 +70,11 @@ impl App{
         self.tasks.push(task);
         self
     }
+    pub fn add_tasks(&mut self,tasks:Vec<Box<dyn TaskHandle>>){
+        self.tasks.extend(tasks);
+    }
     pub async fn run( self)->Result<(),Box<dyn std::error::Error>>{
         build_server(self.clone()).await?;
-        //block( build_server(self)).await?;
         Ok(())
     }
     pub fn data(&self)->Option<&toml::Value>{
@@ -80,4 +83,5 @@ impl App{
     pub fn set_data(&mut self,data:toml::Value){
         self.data=Some(data);
     }
+
 }
