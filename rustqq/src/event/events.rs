@@ -162,6 +162,11 @@ make_notice_event! {
         user_id:i64,
     }
 }
+make_notice_event!{
+    struct OfflineFile{
+        file:FileInfo,
+    }
+}
 
 make_notice_event! {
     struct GroupMessageRecall{
@@ -236,6 +241,7 @@ pub enum Event {
     FriendRequest(FriendRequest),
     GroupRequest(GroupRequest),
     MetaEvent(MetaEvent),
+    OfflineFile(OfflineFile),
     Unknown,
 }
 #[async_trait]

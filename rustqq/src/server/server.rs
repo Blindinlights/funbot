@@ -51,7 +51,7 @@ pub fn get_event(event: &serde_json::Value) -> Result<Event, Error> {
             }
         }
         "notice" => {
-            let notice_type = event["sub_type"].as_str().unwrap();
+            let notice_type = event["notice_type"].as_str().unwrap();
             match notice_type {
                 "group_upload" => Ok(Event::GroupFileUpload(
                     serde_json::from_value(event.clone()).unwrap(),
@@ -78,6 +78,9 @@ pub fn get_event(event: &serde_json::Value) -> Result<Event, Error> {
                     serde_json::from_value(event.clone()).unwrap(),
                 )),
                 "poke" => Ok(Event::GroupPoke(
+                    serde_json::from_value(event.clone()).unwrap(),
+                )),
+                "offline_file" => Ok(Event::OfflineFile(
                     serde_json::from_value(event.clone()).unwrap(),
                 )),
                 _ => Ok(Event::Unknown),
