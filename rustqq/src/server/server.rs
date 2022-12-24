@@ -80,7 +80,7 @@ pub fn get_event(event: &serde_json::Value) -> Result<Event, Error> {
                 "poke" => Ok(Event::GroupPoke(
                     serde_json::from_value(event.clone()).unwrap(),
                 )),
-                "offline_file" => Ok(Event::OfflineFile(
+                "offline_file" => Ok(Event::OfflineFileUpload(
                     serde_json::from_value(event.clone()).unwrap(),
                 )),
                 _ => Ok(Event::Unknown),

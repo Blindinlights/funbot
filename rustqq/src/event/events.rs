@@ -162,9 +162,15 @@ make_notice_event! {
         user_id:i64,
     }
 }
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct OfflineFile{
+    name:String,
+    size:i64,
+    url:String,
+}
 make_notice_event!{
-    struct OfflineFile{
-        file:FileInfo,
+    struct OfflineFileUpload{
+        file:OfflineFile,
     }
 }
 
@@ -241,7 +247,7 @@ pub enum Event {
     FriendRequest(FriendRequest),
     GroupRequest(GroupRequest),
     MetaEvent(MetaEvent),
-    OfflineFile(OfflineFile),
+    OfflineFileUpload(OfflineFileUpload),
     Unknown,
 }
 #[async_trait]
