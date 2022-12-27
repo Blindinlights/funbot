@@ -106,6 +106,15 @@ async fn update_status() {
                     .await
                     .unwrap();
             }
+        }else {
+            if vtuber.live_status == true {
+                //update status
+                r"update vtuber set live_status = false where bid = ?"
+                    .with((vtuber.bid,))
+                    .ignore(&mut conn)
+                    .await
+                    .unwrap();
+            }
         }
     }
 }
