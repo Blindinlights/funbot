@@ -45,8 +45,8 @@ async fn get_live_status(bid: &String, group_id: &String) -> Option<LiveInfo> {
         .await
         .unwrap();
     let res: serde_json::Value = serde_json::from_str(&res).unwrap();
-    println!("{:?}", res);
-    let live_status = res["data"]["live_room"]["live_status"].as_str().unwrap();
+    //println!("{:?}", res);
+    let live_status = res["data"]["live_room"]["liveStatus"].as_str().unwrap();
     if live_status == "1" {
         let title = res["data"]["live_room"]["title"].as_str().unwrap();
         let url = res["data"]["live_room"]["url"].as_str().unwrap();
