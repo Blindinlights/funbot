@@ -37,7 +37,7 @@ async fn get_live_status(bid: &String, group_id: &String) -> Option<LiveInfo> {
     //set user-agent
     let res = client
         .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36")
         .send()
         .await
         .unwrap()
@@ -45,6 +45,7 @@ async fn get_live_status(bid: &String, group_id: &String) -> Option<LiveInfo> {
         .await
         .unwrap();
     let res: serde_json::Value = serde_json::from_str(&res).unwrap();
+    println!("{:?}", res);
     let live_status = res["data"]["live_room"]["live_status"].as_str().unwrap();
     if live_status == "1" {
         let title = res["data"]["live_room"]["title"].as_str().unwrap();
@@ -121,7 +122,7 @@ async fn add_vtuber(bid: &String, group: &String) -> Result<(), Box<dyn std::err
     let mut conn = pool.get_conn().await?;
     //if vtuber not exists
     if r"select * from vtuber where bid = ? and group_id = ?"
-        .with((bid.to_owned()   , group.to_owned()))
+        .with((bid.to_owned(), group.to_owned()))
         .map(&mut conn, |(bid, name, group_id, live_status)| Vtuber {
             bid,
             name,
@@ -201,6 +202,8 @@ mod test {
     #[tokio::test]
     async fn test_add_vtuber() {
         init_db().await;
-        add_vtuber(&"17561885".to_string(), &"256658318".to_string()).await.unwrap();
+        add_vtuber(&"17561885".to_string(), &"256658318".to_string())
+            .await
+            .unwrap();
     }
 }
