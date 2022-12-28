@@ -17,6 +17,11 @@ struct LiveInfo {
     cover: String,
     group_id: String,
 }
+enum LiveStatus {
+    Live(LiveInfo),
+    Offline,
+    Error,
+}
 async fn init_db() {
     let pool = mysql_async::Pool::new(URL);
     let conn = pool.get_conn().await.unwrap();
@@ -31,13 +36,16 @@ async fn init_db() {
     .await
     .unwrap();
 }
-async fn get_live_status(bid: &String, group_id: &String) -> Option<LiveInfo> {
+async fn get_live_status(bid: &String, group_id: &String) -> LiveStatus {
     let url = format!("https://api.bilibili.com/x/space/acc/info?mid={}", bid);
     let client = reqwest::Client::new();
     //set user-agent
     let res = client
         .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36")
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+        )
         .send()
         .await
         .unwrap()
@@ -46,20 +54,24 @@ async fn get_live_status(bid: &String, group_id: &String) -> Option<LiveInfo> {
         .unwrap();
     let res: serde_json::Value = serde_json::from_str(&res).unwrap();
     //println!("{:?}", res);
-    let live_status = res["data"]["live_room"]["liveStatus"].as_i64().unwrap() ;
-    if live_status == 1 {
+    let live_status = res["data"]["live_room"]["liveStatus"].as_i64();
+
+    if live_status == Some(1) {
         let title = res["data"]["live_room"]["title"].as_str().unwrap();
         let url = res["data"]["live_room"]["url"].as_str().unwrap();
         let cover = res["data"]["live_room"]["cover"].as_str().unwrap();
-        Some(LiveInfo {
+        LiveStatus::Live(LiveInfo {
             title: title.to_string(),
             url: url.to_string(),
             cover: cover.to_string(),
             group_id: group_id.to_string(),
         })
+    } else if live_status == Some(0) {
+        LiveStatus::Offline
     } else {
-        None
-    }
+        println!("api error");
+        LiveStatus::Error
+    } 
 }
 async fn get_vtuber_from_db() -> Vec<Vtuber> {
     let pool = mysql_async::Pool::new(URL);
@@ -74,6 +86,7 @@ async fn get_vtuber_from_db() -> Vec<Vtuber> {
         })
         .await
         .unwrap();
+    println!("Vtuber number:{}", vtubers.len());
     vtubers
 }
 async fn update_status() {
@@ -82,40 +95,46 @@ async fn update_status() {
     let pool = mysql_async::Pool::new(URL);
     let mut conn = pool.get_conn().await.unwrap();
     for vtuber in vtubers {
-        let live_status = get_live_status(&vtuber.bid, &vtuber.group_id).await;
-        if let Some(live_status) = live_status {
-            if vtuber.live_status == false {
-                //send message
-                let mut msg = RowMessage::new();
-                msg.add_plain_txt(&vtuber.name)
-                    .add_plain_txt("正在直播！")
-                    .shift_line()
-                    .add_plain_txt(&live_status.title)
-                    .shift_line()
-                    .add_plain_txt(&live_status.url)
-                    .add_image(&live_status.cover);
-                let api = api::SendGroupMessage::new(
-                    live_status.group_id.parse().unwrap(),
-                    msg.get_msg().to_owned(),
-                );
-                api.post().await.unwrap();
-                //update status
-                r"update vtuber set live_status = true where bid = ?"
-                    .with((vtuber.bid,))
-                    .ignore(&mut conn)
-                    .await
-                    .unwrap();
-            }
-        }else {
-            if vtuber.live_status == true {
-                //update status
-                r"update vtuber set live_status = false where bid = ?"
-                    .with((vtuber.bid,))
-                    .ignore(&mut conn)
-                    .await
-                    .unwrap();
-            }
+        let live_status:LiveStatus = get_live_status(&vtuber.bid, &vtuber.group_id).await;
+        match live_status {
+            LiveStatus::Live(ref live_info) => {
+                if vtuber.live_status == false {
+                    //send message
+                    let mut msg = RowMessage::new();
+                    msg.add_plain_txt(&vtuber.name)
+                        .add_plain_txt("正在直播！")
+                        .shift_line()
+                        .add_plain_txt(&live_info.title)
+                        .shift_line()
+                        .add_plain_txt(&live_info.url)
+                        .add_image(&live_info.cover);
+                    let api = api::SendGroupMessage::new(
+                        live_info.group_id.parse().unwrap(),
+                        msg.get_msg().to_owned(),
+                    );
+                    api.post().await.unwrap();
+                    //update status where bid = ? and group_id = ?
+                    r"update vtuber set live_status = true where bid = ? and group_id = ?"
+                        .with((vtuber.bid, vtuber.group_id))
+                        .ignore(&mut conn)
+                        .await
+                        .unwrap();
+                }
+            },
+            LiveStatus::Offline => {
+                if vtuber.live_status == true {
+                    //update status
+                    r"update vtuber set live_status = false where bid = ?"
+                        .with((vtuber.bid,))
+                        .ignore(&mut conn)
+                        .await
+                        .unwrap();
+                }
+            },
+            LiveStatus::Error => println!("api error"),
         }
+        //sleep 0.2s
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     }
 }
 async fn add_vtuber(bid: &String, group: &String) -> Result<(), Box<dyn std::error::Error>> {
@@ -123,10 +142,22 @@ async fn add_vtuber(bid: &String, group: &String) -> Result<(), Box<dyn std::err
     println!("{}", url);
     let client = reqwest::Client::new();
     //set user-agent
-    let res=client.get(url).header("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36").send().await?.text().await?;
+    let res = client
+        .get(url)
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+        )
+        .send()
+        .await?
+        .text()
+        .await?;
     let res: serde_json::Value = serde_json::from_str(&res)?;
     //println!("{:?}",res);
-    let name = res["data"]["name"].as_str().unwrap();
+    let name = res["data"]["name"].as_str();
+    if name.is_none() {
+        return Err("请求错误，或ID不存在".into());
+    }
     let pool = mysql_async::Pool::new(URL);
     let mut conn = pool.get_conn().await?;
     //if vtuber not exists
@@ -160,7 +191,7 @@ async fn delete_vtuber(bid: &String, group: &String) -> Result<(), Box<dyn std::
     Ok(())
 }
 pub fn blive_job() -> AsyncJob {
-    AsyncJob::new("1/60 * * * * * *".parse().unwrap(), update_status)
+    AsyncJob::new("0 1/7 * * * * *".parse().unwrap(), update_status)
 }
 #[handler]
 pub async fn add_live(event: rustqq::event::Event) -> Result<(), Box<dyn std::error::Error>> {
