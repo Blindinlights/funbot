@@ -43,7 +43,7 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 //get absolute path
                 let mut path = path::PathBuf::from("./");
                 path = path.canonicalize()?;
-                path.push("funbot/src/images/");
+                path.push("images/");
                 path.push(file_name);
                 let path = path.to_str().unwrap();
                 file_name = path.to_string();
@@ -51,7 +51,8 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 let path = "file://".to_owned() + path;
                 raw_msg.add_image(path.as_str());
                 msg.reply(raw_msg.get_msg()).await?;
-                std::fs::remove_file(file_name)?;
+                let path=path.replace("file://","");
+                std::fs::remove_file(path)?;
             }
         } else {
             println!("no match");
@@ -102,7 +103,7 @@ async fn get_pic(
             *p = avg_color.clone();
         }
     });
-    let font_data = include_bytes!("../fonts/mergefonts.ttf");
+    let font_data = include_bytes!("../../fonts/mergefonts.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
     let  scale = Scale { x: 45.0, y: 45.0 };
     let font_color = {

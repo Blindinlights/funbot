@@ -66,7 +66,7 @@ async fn reply_msg(prompt: String, msg_id: i64) -> Result<(String,String), Box<d
     let file_name = get_file_name();
     let mut path = path::PathBuf::from("./");
     path = path.canonicalize().unwrap();
-    path.push("funbot/src/images/");
+    path.push("images/");
     path.push(file_name);
     let path = path.to_str().unwrap().to_string();
     hf.generate_image(prompt.as_str(), path.clone()).await?;
@@ -74,6 +74,7 @@ async fn reply_msg(prompt: String, msg_id: i64) -> Result<(String,String), Box<d
     let mut raw_msg = RowMessage::new();
     raw_msg.reply(msg_id);
     raw_msg.add_image(&path);
+    let path=path.replace("file://","");
     Ok((raw_msg.get_msg().to_string(),path))
 }
 #[handler]

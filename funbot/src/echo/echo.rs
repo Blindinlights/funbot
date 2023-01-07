@@ -6,6 +6,7 @@ use rustqq::event::reply_trait::Reply;
 use rustqq::event::MsgEvent;
 use rustqq::handler;
 use scraper;
+use tokio::fs;
 
 #[handler]
 async fn echo_msg(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
@@ -109,28 +110,65 @@ async fn get_page_info(url: &str) -> Result<String, Box<dyn std::error::Error>> 
     Ok(raw_msg)
 }
 
+
+#[handler]
+pub async fn emoji_mix(event: &Event)->Result<(),Box<dyn std::error::Error>>{
+    if let Some(e) =MsgEvent::new(event)  {
+        let re=regex::Regex::new(r"^\\(?:(\p{Emoji})\p{Emoji_Modifier}?(?:\p{Emoji_Component}\p{Emoji}\p{Emoji_Modifier}?)*)\+(?:(\p{Emoji})\p{Emoji_Modifier}?(?:\p{Emoji_Component}\p{Emoji}\p{Emoji_Modifier}?)*)$")?;
+        if !re.is_match(e.msg()){
+            return Ok(());
+        }
+        let msg=e.msg();
+        let cap=re.captures(msg).unwrap();
+        let (left,right)=(cap.get(1).unwrap().as_str(),cap.get(2).unwrap().as_str());
+        let left=left.chars().next().unwrap() as u32;
+        let right=right.chars().next().unwrap() as u32;
+        let (left,right)=(format!("{:x}",left),format!("{:x}",right));
+        let date=get_date(&left, &right).await?;
+        let root_url="https://www.gstatic.com/android/keyboard/emojikitchen";
+        let url=format!("{root_url}/{date}/u{left}/u{left}_u{right}.png");
+        let mut rmsg=RowMessage::new();
+        rmsg.add_image(url.as_str());
+        e.reply(rmsg.get_msg()).await?;
+    }
+    Ok(())
+}
+
+async fn get_date(left: &str, right: &str) -> Result<String,Box<dyn std::error::Error>> {
+    let data=fs::read_to_string("/home/blindinlights/EmojiData.json").await.expect("Fail to open emoji-data.json ");
+    let v: serde_json::Value = serde_json::from_str(&data)?;
+    //get every key name
+    let map = v.as_object().unwrap();
+    let mut result = None;
+    let de=&serde_json::Value::default();
+    let lefts = map.get(&left.to_string()).unwrap_or(de).as_array().expect("No Matched emoji!");
+    for entry in lefts.iter() {
+        if entry["leftEmoji"].as_str().expect("No matched emoji!") == left.to_string() {
+            result = Some(entry["date"].as_str().unwrap().to_string());
+        }
+    }
+    if result.is_none() {
+        let rights = map.get(&right.to_string()).unwrap_or(de).as_array().expect("No matched emoji!");
+        for entry in rights.iter() {
+            if entry["rightEmoji"].as_str().expect("No matched emoji!") == right.to_string() {
+                result = Some(entry["date"].as_str().unwrap().to_string());
+            }
+        }
+    }
+
+    Ok(result.unwrap())
+}
 #[cfg(test)]
 mod test {
     use super::*;
     #[tokio::test]
-    async fn test_get_page_info() {
-        let url = "https://bilibili.com/video/BV1mP4y1D7Mu";
-        let res = get_page_info(url).await.unwrap();
-        println!("{}", res);
-
-    }
-    #[tokio::test]
-    async fn tesr_xml(){
-        let msg=r#"[CQ:xml,data=<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-        <msg serviceID="1">
-            <item layout="4">
-                <title>test title</title>
-                <picture cover="http://url.cn/5CEwIUy"/>
-            </item>
-        </msg>]"#;
-        let api=rustqq::client::api::SendGroupMessage::new(256658318,msg.to_string());
-        if let Err(e)=api.post().await{
-            println!("{}",e);
-        }
+    async fn test_get_date() {
+        let (left, right) = ("🥹", "😯");
+        let left = left.chars().next().unwrap() as u32;
+        let right = right.chars().next().unwrap() as u32;
+        let (left, right) = (format!("{:x}", left), format!("{:x}", right));
+        println!("{} {}", left, right);
+        let date = get_date(left.as_str(), right.as_str()).await.unwrap();
+        println!("https://www.gstatic.com/android/keyboard/emojikitchen/{date}/u{left}/u{left}_u{right}.png")
     }
 }

@@ -66,12 +66,12 @@ async fn get_live_status(bid: &String, group_id: &String) -> LiveStatus {
             cover: cover.to_string(),
             group_id: group_id.to_string(),
         })
-    } else if live_status == Some(0) {
+    } else if live_status == Some(0) || live_status == Some(2) {
         LiveStatus::Offline
     } else {
         println!("api error");
         LiveStatus::Error
-    } 
+    }
 }
 async fn get_vtuber_from_db() -> Vec<Vtuber> {
     let pool = mysql_async::Pool::new(URL);
@@ -95,11 +95,10 @@ async fn update_status() {
     let pool = mysql_async::Pool::new(URL);
     let mut conn = pool.get_conn().await.unwrap();
     for vtuber in vtubers {
-        let live_status:LiveStatus = get_live_status(&vtuber.bid, &vtuber.group_id).await;
+        let live_status: LiveStatus = get_live_status(&vtuber.bid, &vtuber.group_id).await;
         match live_status {
             LiveStatus::Live(ref live_info) => {
                 if vtuber.live_status == false {
-                    //send message
                     let mut msg = RowMessage::new();
                     msg.add_plain_txt(&vtuber.name)
                         .add_plain_txt("正在直播！")
@@ -120,17 +119,17 @@ async fn update_status() {
                         .await
                         .unwrap();
                 }
-            },
+            }
             LiveStatus::Offline => {
                 if vtuber.live_status == true {
                     //update status
-                    r"update vtuber set live_status = false where bid = ?"
-                        .with((vtuber.bid,))
+                    r"update vtuber set live_status = false where bid = ? and group_id = ?"
+                        .with((vtuber.bid, vtuber.group_id))
                         .ignore(&mut conn)
                         .await
                         .unwrap();
                 }
-            },
+            }
             LiveStatus::Error => println!("api error"),
         }
         //sleep 0.2s
