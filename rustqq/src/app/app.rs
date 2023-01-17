@@ -36,13 +36,7 @@ dyn_clone::clone_trait_object!(EventHandle);
 dyn_clone::clone_trait_object!(TaskHandle);
 impl App{
     pub fn new()->Self{
-        Self{
-            ip:"127.0.0.1".to_string(),
-            port:8080,
-            tasks:vec![],
-            handler:vec![],
-            data:None
-        }
+        Self::default()
     }
     pub  fn socket(&self)->(&str,u16){
         (self.ip.as_str(),self.port)
@@ -58,7 +52,7 @@ impl App{
     }
     pub async fn handle_event(&self,event:&Event)->Result<(),Box<dyn std::error::Error>>{
         for f in self.handler.iter(){
-            f.register(event.clone(),&self.data).await?;
+            f.register(event,&self.data).await?;
         }
         Ok(())
         //todo!()
@@ -84,4 +78,15 @@ impl App{
         self.data=Some(data);
     }
 
+}
+impl Default for App{
+    fn default()->Self{
+        Self{
+            ip:"127.0.0.1".to_string(),
+            port:8080,
+            tasks:vec![],
+            handler:vec![],
+            data:None
+        }
+    }
 }

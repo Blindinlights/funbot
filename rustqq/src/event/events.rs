@@ -93,9 +93,17 @@ pub struct Sender {
     user_id: i64,
 }
 
-make_msg_event! {
+make_event! {
+    #[derive(Meassages)]
     struct PrivateMessage{
-        temp_source:i64,
+        message_type:String,
+        sub_type:String,
+        message_id:i64,
+        user_id:i64,
+        message:String,
+        raw_message:String,
+        font:i32,
+        sender:Sender,
     }
 }
 make_msg_event! {
@@ -163,12 +171,12 @@ make_notice_event! {
     }
 }
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct OfflineFile{
-    name:String,
-    size:i64,
-    url:String,
+pub struct OfflineFile {
+    name: String,
+    size: i64,
+    url: String,
 }
-make_notice_event!{
+make_notice_event! {
     struct OfflineFileUpload{
         file:OfflineFile,
     }
@@ -268,7 +276,6 @@ impl MsgEvent {
             _ => None,
         }
     }
-    
 }
 impl Meassages for MsgEvent {
     fn start_with(&self, s: &str) -> bool {

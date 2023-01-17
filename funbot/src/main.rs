@@ -6,7 +6,7 @@ mod openai;
 mod quote;
 mod weather;
 mod blive;
-use echo::{echo_msg, url_preview};
+use echo::{echo_msg, url_preview,emoji_mix,say};
 use make_it_quote::quote_it;
 use openai::{open_image, open_journey};
 use quote::{bing_pic, copy_paste, one_quote};
@@ -36,6 +36,8 @@ async fn main() {
         .event(Box::new(open_journey))
         .event(Box::new(add_live))
         .event(Box::new(delete_live))
+        .event(Box::new(emoji_mix))
+        .event(Box::new(say))
         .run()
         .await
         .unwrap();

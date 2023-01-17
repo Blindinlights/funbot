@@ -1,11 +1,10 @@
+#[derive(Default)]
 pub struct RowMessage {
     content: String,
 }
 impl RowMessage {
     pub fn new() -> RowMessage {
-        Self {
-            content: String::new(),
-        }
+        Self::default()
     }
     pub fn add_plain_txt(&mut self, txt: &str) -> &mut Self {
         self.content.push_str(txt);
@@ -21,7 +20,7 @@ impl RowMessage {
         self
     }
     pub fn add_at_all(&mut self) -> &mut Self {
-        self.content.push_str(format!("[CQ:at,qq=all]").as_str());
+        self.content.push_str("[CQ:at,qq=all]");
         self
     }
     pub fn shift_line(&mut self) -> &mut Self {

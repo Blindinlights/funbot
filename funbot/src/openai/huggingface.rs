@@ -79,7 +79,7 @@ async fn reply_msg(prompt: String, msg_id: i64) -> Result<(String,String), Box<d
 }
 #[handler]
 async fn open_journey(event: Event) -> Result<(), std::error::Error> {
-    if let Event::GroupMessage(ref msg) = event.clone() {
+    if let Event::GroupMessage(ref msg) = event{
         if msg.start_with("/journey") {
             let prompt = msg.message.replace("/journey", "");
             let (reply_msg,path) = reply_msg(prompt, msg.message_id).await?;
@@ -87,7 +87,7 @@ async fn open_journey(event: Event) -> Result<(), std::error::Error> {
             std::fs::remove_file(path)?;
         }
     }
-    if let Event::PrivateMessage(ref msg) = event.clone() {
+    if let Event::PrivateMessage(ref msg) = event {
         if msg.start_with("/journey") {
             let prompt = msg.message.replace("/journey", "");
             let (reply_msg,path) = reply_msg(prompt, msg.message_id).await?;

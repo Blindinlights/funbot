@@ -60,7 +60,7 @@ impl AsyncJob {
             self.last_tick=Some(*now);
             return None;
         }
-
+        #[allow(clippy::never_loop)]
       for event in self.schedule.after(&self.last_tick.unwrap()).take(1){
             if event>*now{
                 return None;
@@ -73,14 +73,13 @@ impl AsyncJob {
         None
     }
 }
+#[derive(Default)]
 pub struct AsyncJobScheduler{
     jobs:Vec<AsyncJob>,
 }
 impl AsyncJobScheduler {
     pub fn new()->Self{
-        Self{
-            jobs:Vec::new(),
-        }
+        self::AsyncJobScheduler::default()
     }
     pub fn add_job(&mut self,job:AsyncJob){
         self.jobs.push(job);
@@ -102,6 +101,7 @@ impl AsyncJobScheduler {
     }
 
 }
+
 pub struct AsyncSchedulerFuture {
     futures: Vec<Option<Pin<JobFuture>>>,
 }

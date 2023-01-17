@@ -15,6 +15,5 @@ async fn new_year() {
 }
 
 pub fn get_job() -> AsyncJob {
-    let job=AsyncJob::new("0 0 0 1 1* *".parse().unwrap(),new_year);
-    job
+    AsyncJob::new("0 0 0 1 1* *".parse().unwrap(), new_year)
 }

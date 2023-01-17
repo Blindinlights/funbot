@@ -30,7 +30,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
 }
 #[handler]
 async fn open_image(event:Event)->Result<(), Box<dyn std::error::Error>>{
-    if let Event::GroupMessage(ref msg) = event.clone() {
+    if let Event::GroupMessage(ref msg) = event{
         if msg.start_with("/prompt") {
             let prompt = msg.message.replace("/prompt", "");
             let image_url = generate_image(prompt.as_str()).await?;
@@ -41,7 +41,7 @@ async fn open_image(event:Event)->Result<(), Box<dyn std::error::Error>>{
             return Ok(());
         }
     }
-    if let Event::PrivateMessage(ref msg) = event.clone() {
+    if let Event::PrivateMessage(ref msg) = event{
         if msg.start_with("/prompt") {
             let prompt = msg.message.replace("/prompt", "");
             let image_url = generate_image(prompt.as_str()).await?;

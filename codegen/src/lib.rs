@@ -76,7 +76,7 @@ pub fn handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
     }
     let ident = ast.sig.ident.clone();
 
-    let block = ast.block.clone();
+    let block = ast.block;
     let gen = quote!(
 
         #[allow(non_camel_case_types)]
@@ -99,7 +99,7 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let ast: syn::ItemFn = syn::parse(item).unwrap();
     let attr: syn::LitStr = syn::parse(attr).unwrap();
     let ident = ast.sig.ident.clone();
-    let block = ast.block.clone();
+    let block = ast.block;
     let gen = quote!(
 
         #[allow(non_camel_case_types)]

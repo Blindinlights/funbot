@@ -57,7 +57,7 @@ impl SendPrivateMessage {
         }
     }
     pub async fn post(&self)->Result<Value,Box<dyn std::error::Error>> {
-        Ok(post_reqwest(self).await?)
+        post_reqwest(self).await
     }
 }
 impl SendGroupMessage {
@@ -69,7 +69,7 @@ impl SendGroupMessage {
         }
     }
     pub async fn post(&self)->Result<Value, Box<dyn std::error::Error>> {
-        Ok(post_reqwest(self).await?)
+        post_reqwest(self).await
         
     }
 }
@@ -78,7 +78,7 @@ impl GetMessage {
         Self { message_id }
     }
     pub async fn post(&self)->Result<Value, Box<dyn std::error::Error>> {
-        Ok(post_reqwest(self).await?)
+        post_reqwest(self).await
     }
 }
     

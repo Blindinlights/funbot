@@ -11,12 +11,8 @@ async fn index(data: String, handler: web::Data<app::App>) -> impl Responder {
     println!("data:{}", data);
     let value: serde_json::Value = serde_json::from_str(&data).unwrap();
     if let Ok(event) = get_event(&value) {
-        match event {
-            Event::Unknown => {
-                //println!("unknown event");
-                return actix_web::HttpResponse::Ok().body("Unknow event type");
-            }
-            _ => {}
+        if let Event::Unknown=event{
+            return actix_web::HttpResponse::Ok().body("Unknow event type");
         }
         let res = (*handler).handle_event(&event).await;
         if let Err(err) = res {

@@ -98,7 +98,7 @@ async fn update_status() {
         let live_status: LiveStatus = get_live_status(&vtuber.bid, &vtuber.group_id).await;
         match live_status {
             LiveStatus::Live(ref live_info) => {
-                if vtuber.live_status == false {
+                if !vtuber.live_status {
                     let mut msg = RowMessage::new();
                     msg.add_plain_txt(&vtuber.name)
                         .add_plain_txt("正在直播！")
@@ -121,7 +121,7 @@ async fn update_status() {
                 }
             }
             LiveStatus::Offline => {
-                if vtuber.live_status == true {
+                if vtuber.live_status {
                     //update status
                     r"update vtuber set live_status = false where bid = ? and group_id = ?"
                         .with((vtuber.bid, vtuber.group_id))
@@ -168,9 +168,7 @@ async fn add_vtuber(bid: &String, group: &String) -> Result<(), Box<dyn std::err
             group_id,
             live_status,
         })
-        .await?
-        .len()
-        == 0
+        .await?.is_empty()
     {
         r"insert into vtuber(bid,name,group_id,live_status) values(?,?,?,?)"
             .with((bid, name, group, false))
@@ -194,7 +192,7 @@ pub fn blive_job() -> AsyncJob {
 }
 #[handler]
 pub async fn add_live(event: rustqq::event::Event) -> Result<(), Box<dyn std::error::Error>> {
-    if let Event::GroupMessage(ref msg) = event.clone() {
+    if let Event::GroupMessage(ref msg) = event {
         if msg.start_with("/addlive") {
             let bid = &msg.message.replace("/addlive", "").trim().to_string();
             if let Err(e) = bid.parse::<i64>() {
@@ -215,7 +213,7 @@ pub async fn add_live(event: rustqq::event::Event) -> Result<(), Box<dyn std::er
 }
 #[handler]
 pub async fn delete_live(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
-    if let Event::GroupMessage(ref msg) = event.clone() {
+    if let Event::GroupMessage(ref msg) = event {
         if msg.start_with("/dellive") {
             let bid = &msg.message.replace("/dellive", "").trim().to_string();
             if let Err(e) = bid.parse::<i64>() {

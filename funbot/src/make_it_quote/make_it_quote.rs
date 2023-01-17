@@ -12,7 +12,7 @@ use rusttype::{Font, Scale};
 use std::path;
 #[handler]
 pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
-    if let Event::GroupMessage(ref msg) = event.clone() {
+    if let Event::GroupMessage(ref msg) = event {
         //match [CQ:reply,id={id}] <msg>
         let re = regex::Regex::new(r"\[CQ:reply,id=(-?\d+)\]\[CQ:.*]* (.*)").unwrap();
         if let Some(e) = re.captures(msg.message.as_str()) {
@@ -23,7 +23,7 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 let res = api.post().await?;
                 let re = Regex::new(r"(\[CQ:.*\])").unwrap();
                 let init_msg = res["data"]["message"].as_str().unwrap();
-                if let Some(_) = re.captures(init_msg) {
+                if re.captures(init_msg).is_some() {
                     msg.reply("只能引用纯文字").await?;
                     return Err("只能引用纯文字".into());
                 }
@@ -51,7 +51,7 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 let path = "file://".to_owned() + path;
                 raw_msg.add_image(path.as_str());
                 msg.reply(raw_msg.get_msg()).await?;
-                let path=path.replace("file://","");
+                let path = path.replace("file://", "");
                 std::fs::remove_file(path)?;
             }
         } else {
@@ -75,9 +75,9 @@ async fn get_pic(
         (r + p[0] as u32, g + p[1] as u32, b + p[2] as u32)
     });
     avg_color = (
-        avg_color.0 / (img.width() * img.height()) as u32,
-        avg_color.1 / (img.width() * img.height()) as u32,
-        avg_color.2 / (img.width() * img.height()) as u32,
+        avg_color.0 / (img.width() * img.height()),
+        avg_color.1 / (img.width() * img.height()),
+        avg_color.2 / (img.width() * img.height()),
     );
 
     let mut canvas = image::RgbaImage::new(1280, 640);
@@ -100,12 +100,12 @@ async fn get_pic(
     let avg_color = image::Rgba([avg_color.0 as u8, avg_color.1 as u8, avg_color.2 as u8, 255]);
     canvas.pixels_mut().enumerate().for_each(|(i, p)| {
         if i % 1280 >= 640 {
-            *p = avg_color.clone();
+            *p = avg_color;
         }
     });
     let font_data = include_bytes!("../../fonts/mergefonts.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
-    let  scale = Scale { x: 45.0, y: 45.0 };
+    let scale = Scale { x: 45.0, y: 45.0 };
     let font_color = {
         let mut c = image::Rgba([255, 255, 255, 255]);
         for i in 0..3 {
@@ -123,7 +123,7 @@ async fn get_pic(
     let mut row_width = 0f32;
     let mut row_height = 0f32;
     let row_max_width = 600f32;
-    let txt_height ;
+
     for (i, c) in msg.chars().enumerate() {
         let font_width = font.glyph(c).scaled(scale).h_metrics().advance_width; //获取字符宽度
         if c == '\n' {
@@ -144,7 +144,7 @@ async fn get_pic(
         }
     }
     lines.push(line.clone());
-    txt_height = row_height;
+    let txt_height = row_height;
     let mut x = 660i32;
     let mut y = ((640f32 - txt_height) / 2f32) as i32;
     for (_, line) in lines.iter().enumerate() {
