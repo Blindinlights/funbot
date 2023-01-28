@@ -8,7 +8,7 @@ use serde_json;
 
 #[post("/")]
 async fn index(data: String, handler: web::Data<app::App>) -> impl Responder {
-    println!("data:{}", data);
+    println!("data:{data}");
     let value: serde_json::Value = serde_json::from_str(&data).unwrap();
     if let Ok(event) = get_event(&value) {
         if let Event::Unknown=event{
@@ -16,7 +16,7 @@ async fn index(data: String, handler: web::Data<app::App>) -> impl Responder {
         }
         let res = (*handler).handle_event(&event).await;
         if let Err(err) = res {
-            println!("err:{}", err);
+            println!("err:{err}");
         }
     }
     HttpResponse::Ok().body("Hello world!")

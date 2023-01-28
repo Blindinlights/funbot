@@ -13,7 +13,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
 
         //add header "Content-Type: application/json""Authorization: Bearer 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"
         let api_key=std::env::var("OPENAI_API_KEY")?;
-        println!("api_key:{}", api_key);
+        println!("api_key:{api_key}");
         let api_key="Bearer {}".replace("{}", &api_key);
         let res = client.post(url)
             .header("Content-Type", "application/json")
@@ -25,7 +25,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
             .await?;
             let v: Value = serde_json::from_str(&res)?;
             let image_url=v["data"][0]["url"].as_str().unwrap();
-            println!("v:{}", v);
+            println!("v:{v}");
             Ok(image_url.to_string())
 }
 #[handler]

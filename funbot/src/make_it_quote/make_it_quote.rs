@@ -66,8 +66,8 @@ async fn get_pic(
     nick_name: &str,
     file_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let url = format!("http://q1.qlogo.cn/g?b=qq&nk={}&s=640", id);
-    let nick_name = format!("--{}", nick_name);
+    let url = format!("http://q1.qlogo.cn/g?b=qq&nk={id}&s=640");
+    let nick_name = format!("--{nick_name}");
     let resp = reqwest::get(&url).await?;
     let buf = resp.bytes().await?.to_vec();
     let img = image::load_from_memory(&buf)?;
@@ -124,7 +124,7 @@ async fn get_pic(
     let mut row_height = 0f32;
     let row_max_width = 600f32;
 
-    for (i, c) in msg.chars().enumerate() {
+    for (_, c) in msg.chars().enumerate() {
         let font_width = font.glyph(c).scaled(scale).h_metrics().advance_width; //获取字符宽度
         if c == '\n' {
             lines.push(line.clone());
@@ -132,7 +132,6 @@ async fn get_pic(
             row_width = 0f32;
             row_height += font.v_metrics(scale).ascent + 10f32;
         } else if row_width + font_width > row_max_width {
-            println!("{}:{}", i, c);
             lines.push(line.clone());
             line = String::new();
             line.push(c);

@@ -6,7 +6,7 @@ use rustqq::event::events::Meassages;
 use rustqq::event::reply_trait::Reply;
 use rustqq::event::MsgEvent;
 use rustqq::handler;
-use scraper;
+
 use serde_json::Value;
 use tokio::fs;
 
@@ -96,7 +96,7 @@ async fn get_page_info(url: &str) -> Result<String, Box<dyn std::error::Error>> 
         None => "",
     };
     let image = if image.starts_with("//") {
-        format!("https:{}", image)
+        format!("https:{image}")
     } else {
         image.to_string()
     };
@@ -125,7 +125,7 @@ pub async fn emoji_mix(event: &Event)->Result<(),Box<dyn std::error::Error>>{
         let (left,right)=(cap.get(1).unwrap().as_str(),cap.get(2).unwrap().as_str());
         let left=left.chars().next().unwrap() as u32;
         let right=right.chars().next().unwrap() as u32;
-        let (mut left,mut right)=(format!("{:x}",left),format!("{:x}",right));
+        let (mut left,mut right)=(format!("{left:x}"),format!("{right:x}"));
         let date=get_date(&mut left, &mut right).await.unwrap_or_default();
         if date.is_empty(){
             e.reply("未找到该表情").await?;
@@ -173,7 +173,7 @@ async fn get_date(left: &mut String, right: &mut String) -> Result<String, Box<d
         res=rights.iter().last().unwrap_or(&&Value::Null)["date"].as_str();
         swap(left, right);
     }
-    println!("left:{} right:{}", left, right);
+    println!("left:{left} right:{right}");
     println!("date:{}", res.unwrap_or(""));
     Ok(res.unwrap_or("").to_owned())
 }
@@ -185,8 +185,8 @@ mod test {
         let (left, right) = ("🥹", "😯");
         let left = left.chars().next().unwrap() as u32;
         let right = right.chars().next().unwrap() as u32;
-        let (mut left, mut right) = (format!("{:x}", left), format!("{:x}", right));
-        println!("{} {}", left, right);
+        let (mut left, mut right) = (format!("{left:x}"), format!("{right:x}"));
+        println!("{left} {right}");
         let date = get_date(&mut left, &mut right).await.unwrap();
         println!("https://www.gstatic.com/android/keyboard/emojikitchen/{date}/u{left}/u{left}_u{right}.png")
     }
@@ -202,7 +202,7 @@ async fn say(event: &Event)->Result<(),Box<dyn std::error::Error>>{
         let msg=cap.get(1).unwrap().as_str();
         let msg=msg.replace("&#91;", "[");
         let msg=msg.replace("&#93;", "]");
-        println!("{}",msg);
+        println!("{msg}");
         e.reply(msg.as_str()).await?;
     }
     Ok(())

@@ -19,7 +19,7 @@ pub async fn one_quote(event: Event) ->Result<(),Box<dyn std::error::Error>>{
             let json: serde_json::Value = serde_json::from_str(&text)?;
             let content=json["data"]["content"].as_str().unwrap();
             let origin=json["data"]["origin"].as_str().unwrap();
-            let m=format!("{}\n    --{}",content,origin);
+            let m=format!("{content}\n    --{origin}");
 
             let mut msg=RowMessage::new();
             msg.add_plain_txt(&m);
@@ -37,7 +37,7 @@ pub async fn bing_pic(event: Event) ->Result<(),Box<dyn std::error::Error>>{
         if e.start_with("/bing_pic"){
             let cmd =e.message.split(' ').collect::<Vec<&str>>();
             let mut day=1;
-            print!("{:?}",cmd);
+            print!("{cmd:?}");
             //remove empty string
             let cmd:Vec<&str>=cmd.into_iter().filter(|&x| !x.is_empty()).collect();
             if  cmd.len()<=1{
@@ -53,7 +53,7 @@ pub async fn bing_pic(event: Event) ->Result<(),Box<dyn std::error::Error>>{
             //reqwest
             let res = reqwest::get(url).await;
             if let Err(err) =&res  {
-                println!("error:{}",err);
+                println!("error:{err}");
                 e.reply("获取失败").await?;
             }
             let text = res.unwrap().text().await?;
@@ -63,7 +63,7 @@ pub async fn bing_pic(event: Event) ->Result<(),Box<dyn std::error::Error>>{
             let url=json["images"][0]["url"].as_str().unwrap();
             let title=json["images"][0]["title"].as_str().unwrap();
             let copyright=json["images"][0]["copyright"].as_str().unwrap();
-            let url=format!("https://cn.bing.com{}",url);
+            let url=format!("https://cn.bing.com{url}");
             let mut msg=RowMessage::new();
             //msg.add_plain_txt(&format!("{}\n{}\n",title,copyright));
             msg.add_plain_txt(title)

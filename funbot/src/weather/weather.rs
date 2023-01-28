@@ -27,21 +27,13 @@ async fn weather_query(event: Event) -> Result<(),Box<dyn std::error::Error>> {
                 let reporttime = json["lives"][0]["reporttime"].as_str().unwrap();
                 //format msg
                 let msg = format!(
-                    "{} {}\n-------------------------------------\n\
-                    天气：{}\n\
-                    温度：{}°C\n\
-                    风向：{}\n\
-                    风力：{}级\n\
-                    湿度：{}%\n\
-                    更新时间：{}",
-                    province,
-                    city,
-                    weather,
-                    temperature,
-                    winddirection,
-                    windpower,
-                    humidity,
-                    reporttime
+                    "{province} {city}\n-------------------------------------\n\
+                    天气：{weather}\n\
+                    温度：{temperature}°C\n\
+                    风向：{winddirection}\n\
+                    风力：{windpower}级\n\
+                    湿度：{humidity}%\n\
+                    更新时间：{reporttime}"
                 );
                 let mut pic = RowMessage::new();
                 //add picture
@@ -93,32 +85,19 @@ async fn weather_report(event: Event) {
             };
             let nightpower = casts[1]["nightpower"].as_str().unwrap();
             let msg = format!(
-                "{} {}\n-------------------------------------\n\
-                日期：{} {}\n\
+                "{province} {city}\n-------------------------------------\n\
+                日期：{date} {week}\n\
                 ====白天====\n\
-                天气：{}\n\
-                温度：{}°C\n\
-                风向：{}\n\
-                风力：{}级\n\n\
+                天气：{dayweather}\n\
+                温度：{daytemp}°C\n\
+                风向：{daywind}\n\
+                风力：{daypower}级\n\n\
                 ====夜间====\n\
-                天气：{}\n\
-                温度：{}°C\n\
-                风向：{}\n\
-                风力：{}级\n\
-                更新时间：{}",
-                province,
-                city,
-                date,
-                week,
-                dayweather,
-                daytemp,
-                daywind,
-                daypower,
-                nightweather,
-                nighttemp,
-                nightwind,
-                nightpower,
-                reporttime
+                天气：{nightweather}\n\
+                温度：{nighttemp}°C\n\
+                风向：{nightwind}\n\
+                风力：{nightpower}级\n\
+                更新时间：{reporttime}"
             );
             e.reply(msg.as_str()).await?;
         }

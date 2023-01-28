@@ -45,7 +45,7 @@ impl HuggingFace {
     pub fn open_journey() -> Self {
         let api_key = std::env::var("HUGGINGFACE_API_KEY").unwrap();
         let hf = HuggingFace::new(
-            format!("Bearer {}", api_key),
+            format!("Bearer {api_key}"),
             "https://api-inference.huggingface.co/models/prompthero/openjourney".to_string(),
         );
         hf
@@ -58,7 +58,7 @@ fn get_file_name() -> String {
         .map(char::from)
         .collect();
     file_name.push_str(".png");
-    println!("file_name:{}", file_name);
+    println!("file_name:{file_name}");
     file_name
 }
 async fn reply_msg(prompt: String, msg_id: i64) -> Result<(String,String), Box<dyn std::error::Error>> {

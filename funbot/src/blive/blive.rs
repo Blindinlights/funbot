@@ -37,7 +37,7 @@ async fn init_db() {
     .unwrap();
 }
 async fn get_live_status(bid: &String, group_id: &String) -> LiveStatus {
-    let url = format!("https://api.bilibili.com/x/space/acc/info?mid={}", bid);
+    let url = format!("https://api.bilibili.com/x/space/acc/info?mid={bid}");
     let client = reqwest::Client::new();
     //set user-agent
     let res = client
@@ -137,8 +137,8 @@ async fn update_status() {
     }
 }
 async fn add_vtuber(bid: &String, group: &String) -> Result<(), Box<dyn std::error::Error>> {
-    let url = format!("https://api.bilibili.com/x/space/acc/info?mid={}", bid);
-    println!("{}", url);
+    let url = format!("https://api.bilibili.com/x/space/acc/info?mid={bid}");
+    println!("{url}");
     let client = reqwest::Client::new();
     //set user-agent
     let res = client
