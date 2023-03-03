@@ -8,10 +8,16 @@ pub struct App{
     port:u16,
     pub tasks:Vec<Box<dyn TaskHandle>>,
     pub handler:Vec<Box<dyn EventHandle>>,
-    data:Option<toml::Value>
+    pub config:Config
     
 }
+#[derive(Clone,Default)]
+pub struct Config{
+    plugins:Vec<Plugin>
+
+}
 #[allow(dead_code)]
+#[derive(Default,Clone)]
 pub struct Plugin{
     commands:Option<Vec<String>>,
     description:String,
@@ -25,7 +31,7 @@ unsafe impl Send for App{}
 unsafe impl Sync for App{}
 #[async_trait::async_trait]
 pub trait EventHandle:Send + Sync+DynClone{
-    async fn register(&self,event:&Event,data:&Option<toml::Value>)->Result<(),Box<dyn std::error::Error>>;
+    async fn register(&self,event:&Event,data:&Config)->Result<(),Box<dyn std::error::Error>>;
 }
 #[async_trait::async_trait]
 pub trait TaskHandle:Send + Sync+DynClone{
@@ -52,7 +58,7 @@ impl App{
     }
     pub async fn handle_event(&self,event:&Event)->Result<(),Box<dyn std::error::Error>>{
         for f in self.handler.iter(){
-            f.register(event,&self.data).await?;
+            f.register(event,&self.config).await?;
         }
         Ok(())
         //todo!()
@@ -71,13 +77,6 @@ impl App{
         build_server(self.clone()).await?;
         Ok(())
     }
-    pub fn data(&self)->Option<&toml::Value>{
-        self.data.as_ref()
-    }
-    pub fn set_data(&mut self,data:toml::Value){
-        self.data=Some(data);
-    }
-
 }
 impl Default for App{
     fn default()->Self{
@@ -86,7 +85,7 @@ impl Default for App{
             port:8080,
             tasks:vec![],
             handler:vec![],
-            data:None
+            config:Config::default()
         }
     }
 }
