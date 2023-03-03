@@ -279,7 +279,7 @@ async fn get_context_group(
     Ok(res)
 }
 fn get_db() -> Result<mysql_async::Pool, Box<dyn std::error::Error>> {
-    let url = std::env::var("DATABASE_URL")?;
+    let mut  url = std::env::var("DATABASE_URL")?;
     url.push_str("chatgpt");
     let pool = mysql_async::Pool::new(url.as_str());
     Ok(pool)
