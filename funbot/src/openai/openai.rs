@@ -81,8 +81,17 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
         let ans = &chat_gpt(e.user_id, msg, 0).await?;
         e.reply(ans).await?;
     };
-
-    todo!()
+    if let Event::GroupMessage(ref e)=event{
+        let msg = e.message.as_str();
+        if config.is_command(msg) {
+            return Ok(());
+        }
+        if let Some(msg)=e.at_me(){
+            let ans = &chat_gpt(e.user_id, &msg, e.group_id).await?;
+            e.reply(ans).await?;
+        }
+    }
+    Ok(())
 }
 async fn chat_gpt(
     user_id: i64,
@@ -150,6 +159,8 @@ async fn chat_gpt(
     } else {
         update_context_group(&new_chat, group_id, 0, &mut conn).await?;
     }
+    drop(conn);
+    pool.disconnect().await?;
     Ok(ans.unwrap().to_string())
 }
 
