@@ -1,37 +1,37 @@
 [[plugin]]
 name="echo"
 command=["echo"]
-description={en_US="Echoes back the message",zh_CN="回显消息"}
+description="回显消息"
 usage="echo <message>"
 regex="^echo (.+)$"
 [[plugin]]
 name="weather"
 command=["weather","天气","天气查询"]
-description={en_US="Gets the weather for Chang'an district",zh_CN="获取长安区的天气"}
+description="获取长安区的天气"
 usage="weather"
 regex="^weather$|^天气$|^天气查询$"
 [[plugin]]
 name="weather_forecast"
 command=["weather_forecast","天气预报"]
-description={en_US="Gets the weather forecast for Chang'an district",zh_CN="获取长安区的天气预报"}
+description="获取长安区的天气预报"
 usage="weather-forecast"
 regex="^weather-forecast$|^天气预报$"
 [[plugin]]
 name="wallpaper"
 command=["wallpaper","壁纸"]
-description={en_US="Gets a wallpaper from the wallpaper API",zh_CN="从壁纸API获取壁纸"}
+description="从壁纸API获取壁纸"
 usage="wallpaper <1-8>"
 regex="(^wallpaper ([1-8])$)|(^壁纸 ([1-8])$)"
 [[plugin]]
 name="make-it-quote"
 command=["make-it-quote","制作语录"]
-description={en_US="Makes a quote from a message",zh_CN="从消息制作语录"}
+description="从消息制作语录"
 usage="make-it-quote <option>"
 options=["img","text"]
 regex="^make-it-quote (img|text)$|^制作语录 (img|text)$"
 [[plugin]]
 name="openjourney"
 command=["prompt","提词"]
-description={en_US="",zh_CN="调用OpenJourney，根据提词生成图片"}
+description="调用OpenJourney，根据提词生成图片"
 usage="prompt <text>"
 regex="^prompt (.+)$|^提词 (.+)$"
