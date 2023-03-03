@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Read;
 use serde::Deserialize;
-use toml::from_str;
+
 use crate::event::events::*;
 use crate::server::build_server;
 use dyn_clone::DynClone;
@@ -27,7 +27,7 @@ impl Config {
         let mut file = File::open("plugin.toml").unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
-        let conf:Config= toml::from_str(&contents).unwrap();
+        let _conf:Config= toml::from_str(&contents).unwrap();
         self
     }
     pub fn is_command(&self, msg: &str) -> bool {
