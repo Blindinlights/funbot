@@ -23,7 +23,8 @@ async fn main() {
             scheduler.run_pending().await;
         }
     });
-    app::App::new()
+
+    let mut app=app::App::new()
         .event(Box::new(echo_msg))
         .event(Box::new(weather_report))
         .event(Box::new(weather_query))
@@ -34,8 +35,7 @@ async fn main() {
         .event(Box::new(quote_it))
         .event(Box::new(open_journey))
         .event(Box::new(emoji_mix))
-        .event(Box::new(say))
-        .run()
-        .await
-        .unwrap();
+        .event(Box::new(say));
+    app.config();
+    app.run().await.unwrap();
 }

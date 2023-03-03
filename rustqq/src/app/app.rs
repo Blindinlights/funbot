@@ -1,3 +1,7 @@
+use std::fs::File;
+use std::io::Read;
+use serde::Deserialize;
+use toml::from_str;
 use crate::event::events::*;
 use crate::server::build_server;
 use dyn_clone::DynClone;
@@ -10,27 +14,31 @@ pub struct App {
     pub handler: Vec<Box<dyn EventHandle>>,
     pub config: Config,
 }
-#[derive(Clone, Default)]
+#[derive(Clone, Default,Deserialize)]
 pub struct Config {
-    plugins: Vec<Plugin>,
+    plugin: Vec<Plugin>,
 }
 impl Config {
     pub fn new() -> Self {
         Self::default()
     }
     pub fn load(&mut self) -> &mut Self {
-        //todo!()
+        //read file plugin.toml
+        let mut file = File::open("plugin.toml").unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+        let conf:Config= toml::from_str(&contents).unwrap();
         self
     }
     pub fn is_command(&self, msg: &str) -> bool {
         self.get_command(msg).is_some()
     }
     pub fn get_command(&self, msg: &str) -> Option<&Plugin> {
-        self.plugins.iter().find(|x| x.is_match(msg))
+        self.plugin.iter().find(|x| x.is_match(msg))
     }
 }
 #[allow(dead_code)]
-#[derive(Default, Clone)]
+#[derive(Default, Clone,Deserialize)]
 pub struct Plugin {
     commands: Option<Vec<String>>,
     description: String,
@@ -105,6 +113,9 @@ impl App {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error>> {
         build_server(self.clone()).await?;
         Ok(())
+    }
+    pub fn config(&mut self){
+        self.config.load();
     }
 }
 impl Default for App {

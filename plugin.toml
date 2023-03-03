@@ -1,49 +1,27 @@
-[general]
-waiting ="正在处理中(◍•ᴗ•◍)"
-request-failed="请求失败(╥﹏╥)"
-request-failed-retry="请求失败，正在重试(╥﹏╥)"
-invalid-command="无效的命令・ࡇ・，请检查命令是否正确~"
-invalid-args="无效的参数ᶘ ᵒᴥᵒᶅ，请检查参数是否正确~"
-morning="早上好~"
-afternoon="下午好~"
-evening="晚上好~"
-night="夜深了~"
-no-permission="你没有权限使用这个命令Ծ‸Ծ"
-no-permission-bot="我没有权限使用这个命令Ծ‸Ծ"
 [[plugin]]
 name="echo"
 command=["echo"]
 description={en_US="Echoes back the message",zh_CN="回显消息"}
 usage="echo <message>"
 regex="^echo (.+)$"
-
 [[plugin]]
 name="weather"
 command=["weather","天气","天气查询"]
 description={en_US="Gets the weather for Chang'an district",zh_CN="获取长安区的天气"}
 usage="weather"
 regex="^weather$|^天气$|^天气查询$"
-
 [[plugin]]
 name="weather_forecast"
 command=["weather_forecast","天气预报"]
 description={en_US="Gets the weather forecast for Chang'an district",zh_CN="获取长安区的天气预报"}
 usage="weather-forecast"
 regex="^weather-forecast$|^天气预报$"
-
 [[plugin]]
 name="wallpaper"
 command=["wallpaper","壁纸"]
 description={en_US="Gets a wallpaper from the wallpaper API",zh_CN="从壁纸API获取壁纸"}
 usage="wallpaper <1-8>"
 regex="(^wallpaper ([1-8])$)|(^壁纸 ([1-8])$)"
-
-[[plugin]]
-name="url-preview"
-description={en_US="Gets a preview of a URL",zh_CN="获取URL的预览"}
-usage="<url>"
-regex="^((ht|f)tps?)://[\w\-]+(\.[\w\-]+)+([\w\-\.,@?^=%&:/~\+#]*[\w\-@?^=%&/~\+#])?$"
-
 [[plugin]]
 name="make-it-quote"
 command=["make-it-quote","制作语录"]
@@ -51,7 +29,6 @@ description={en_US="Makes a quote from a message",zh_CN="从消息制作语录"}
 usage="make-it-quote <option>"
 options=["img","text"]
 regex="^make-it-quote (img|text)$|^制作语录 (img|text)$"
-
 [[plugin]]
 name="openjourney"
 command=["prompt","提词"]
