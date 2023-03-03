@@ -1,18 +1,18 @@
 use rustqq::app;
+mod blive;
 mod echo;
 mod festival;
 mod make_it_quote;
 mod openai;
 mod quote;
 mod weather;
-mod blive;
-use echo::{echo_msg, url_preview,emoji_mix,say};
+use blive::{add_live, delete_live};
+use echo::{echo_msg, emoji_mix, say, url_preview};
 use make_it_quote::quote_it;
 use openai::{open_image, open_journey};
 use quote::{bing_pic, copy_paste, one_quote};
 use rustqq::app::AsyncJobScheduler;
 use weather::{weather_query, weather_report};
-use blive::{add_live, delete_live};
 #[actix_web::main]
 async fn main() {
     let mut scheduler = AsyncJobScheduler::new();
@@ -32,10 +32,7 @@ async fn main() {
         .event(Box::new(copy_paste))
         .event(Box::new(url_preview))
         .event(Box::new(quote_it))
-        .event(Box::new(open_image))
         .event(Box::new(open_journey))
-        .event(Box::new(add_live))
-        .event(Box::new(delete_live))
         .event(Box::new(emoji_mix))
         .event(Box::new(say))
         .run()

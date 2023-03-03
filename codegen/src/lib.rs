@@ -86,7 +86,7 @@ pub fn handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #[allow(unused)]
         #[rustqq::async_trait::async_trait]
         impl ::rustqq::app::app::EventHandle for #ident{
-            async fn register(&self,event:&Event,data: &::rustqq::app::Config)->Result<(),Box<dyn std::error::Error>>{
+            async fn register(&self,event:&Event,config: &::rustqq::app::Config)->Result<(),Box<dyn std::error::Error>>{
                 
                 #block
             }

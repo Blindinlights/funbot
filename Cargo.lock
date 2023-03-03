@@ -2573,6 +2573,7 @@ dependencies = [
  "codegen",
  "cron",
  "dyn-clone",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
