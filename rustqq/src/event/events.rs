@@ -88,7 +88,7 @@ macro_rules! make_notice_event {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct Sender {
     age: i32,
-    nickname: String,
+    pub nickname: String,
     sex: String,
     user_id: i64,
 }

@@ -108,7 +108,7 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
         }
         let ans = &chat_gpt(e.user_id, msg, 0).await;
         if let Ok(ans) = ans {
-            //let asn=format("{}说:")
+            
             e.reply(ans).await?;
         } else {
             e.reply("token超过4096，将重置记忆").await?;
@@ -127,6 +127,7 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
         if let Some(msg) = e.at_me() {
             let ans = &chat_gpt(0, &msg, e.group_id).await;
             if let Ok(ans) = ans {
+                let asn=format!("{}说:{}",e.sender.nickname,ans);
                 e.reply(ans).await?;
             } else {
                 e.reply("token超过4096，将重置记忆").await?;
