@@ -1,3 +1,4 @@
+use log::{debug, info, log};
 use mysql_async::{
     self,
     prelude::{Query, Queryable, WithParams},
@@ -37,7 +38,6 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
         .await?;
     let v: Value = serde_json::from_str(&res)?;
     let image_url = v["data"][0]["url"].as_str().unwrap();
-    //println!("v:{v}");
     Ok(image_url.to_string())
 }
 #[handler]
@@ -108,7 +108,7 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
         }
         let ans = &chat_gpt(e.user_id, msg, 0).await;
         if let Ok(ans) = ans {
-            
+            info!("{}对Chatbot说：{}", e.user_id, e.msg());
             e.reply(ans).await?;
         } else {
             e.reply("token超过4096，将重置记忆").await?;
@@ -127,7 +127,13 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
         if let Some(msg) = e.at_me() {
             let ans = &chat_gpt(0, &msg, e.group_id).await;
             if let Ok(ans) = ans {
-                let asn=format!("{}说:{}",e.sender.nickname,ans);
+                info!(
+                    "{}在群（{}）对Chatbot说：{}",
+                    e.user_id,
+                    e.group_id,
+                    e.msg()
+                );
+                //let ans = format!("{}: {}", e.sender.nickname, ans);
                 e.reply(ans).await?;
             } else {
                 e.reply("token超过4096，将重置记忆").await?;
@@ -155,7 +161,6 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
         role: "user".to_string(),
         content: prompt.to_string(),
     };
-    //println!("context:{:?}", context);
     context.push(new_chat);
     let data = json!({
         "model":"gpt-3.5-turbo",
@@ -175,7 +180,7 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
         .text()
         .await?;
     let v: Value = serde_json::from_str(&res)?;
-    //println!("v:{:?}", v);
+
     let ans = v["choices"][0]["message"]["content"].as_str();
     if ans.is_none() {
         return anyhow::Result::Err(anyhow::anyhow!("max token 4096"));
@@ -187,10 +192,10 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
         role: role.to_string(),
         content: ans.unwrap().to_string(),
     };
+
     context.push(new_chat);
 
     let new_chat = serde_json::to_string(&context)?;
-    //println!("{}", new_chat);
     if user_id != 0 {
         update_context_private(&new_chat, user_id, 0, &mut conn).await?;
     } else {
@@ -198,7 +203,9 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
     }
     drop(conn);
     pool.disconnect().await?;
-    Ok(ans.unwrap().to_string())
+    let ans = ans.unwrap().to_string();
+    info!("Chatbot:{}", ans);
+    Ok(ans)
 }
 
 async fn init_database(conn: &mut mysql_async::Conn) -> anyhow::Result<()> {
@@ -267,7 +274,7 @@ async fn get_context_private(
         .to_string();
     }
     let res: Vec<Chat> = serde_json::from_str(&res).unwrap();
-    //println!("res:{:?}", res);
+
     Ok(res)
 }
 async fn insert_context_private(

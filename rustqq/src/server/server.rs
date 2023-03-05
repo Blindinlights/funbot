@@ -4,19 +4,29 @@ use std::io::Error;
 use crate::app;
 use crate::event::events::*;
 use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
+use log::info;
 use serde_json;
 
 #[post("/")]
 async fn index(data: String, handler: web::Data<app::App>) -> impl Responder {
-    println!("data:{data}");
     let value: serde_json::Value = serde_json::from_str(&data).unwrap();
     if let Ok(event) = get_event(&value) {
         if let Event::Unknown=event{
             return actix_web::HttpResponse::Ok().body("Unknow event type");
         }
+        match &event{
+            Event::GroupMessage(e)=>{
+                info!("收到群消息（{}） {}说{}",e.group_id,e.sender.nickname,e.msg())
+            },
+            Event::PrivateMessage(e)=>{
+                info!("收到{}（{}）的消息：{}",e.sender.nickname,e.user_id,e.msg())
+            }
+            _=>{
+            }
+        }
         let res = (*handler).handle_event(&event).await;
         if let Err(err) = res {
-            println!("err:{err}");
+            log::error!("{}",err)
         }
     }
     HttpResponse::Ok().body("Hello world!")
@@ -39,9 +49,10 @@ pub fn get_event(event: &serde_json::Value) -> Result<Event, Error> {
         "message" => {
             let message_type = event["message_type"].as_str().unwrap();
             match message_type {
-                "private" => Ok(Event::PrivateMessage(serde_json::from_value(
+                "private" => {
+                    Ok(Event::PrivateMessage(serde_json::from_value(
                     event.clone(),
-                )?)),
+                )?))},
                 "group" => Ok(Event::GroupMessage(serde_json::from_value(event.clone())?)),
                 _ => Ok(Event::Unknown),
             }

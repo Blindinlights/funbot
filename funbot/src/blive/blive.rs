@@ -1,3 +1,4 @@
+use log::error;
 use mysql_async::prelude::*;
 use rustqq::app::AsyncJob;
 use rustqq::client::{api, message::RowMessage};
@@ -53,7 +54,7 @@ async fn get_live_status(bid: &String, group_id: &String) -> LiveStatus {
         .await
         .unwrap();
     let res: serde_json::Value = serde_json::from_str(&res).unwrap();
-    //println!("{:?}", res);
+
     let live_status = res["data"]["live_room"]["liveStatus"].as_i64();
 
     if live_status == Some(1) {
@@ -69,7 +70,7 @@ async fn get_live_status(bid: &String, group_id: &String) -> LiveStatus {
     } else if live_status == Some(0) || live_status == Some(2) {
         LiveStatus::Offline
     } else {
-        println!("api error");
+        error!("api error");
         LiveStatus::Error
     }
 }
@@ -86,7 +87,7 @@ async fn get_vtuber_from_db() -> Vec<Vtuber> {
         })
         .await
         .unwrap();
-    println!("Vtuber number:{}", vtubers.len());
+    log::debug!("Vtuber number:{}", vtubers.len());
     vtubers
 }
 async fn update_status() {
@@ -130,7 +131,7 @@ async fn update_status() {
                         .unwrap();
                 }
             }
-            LiveStatus::Error => println!("api error"),
+            LiveStatus::Error => warn!("api error"),
         }
         //sleep 0.2s
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
@@ -138,7 +139,6 @@ async fn update_status() {
 }
 async fn add_vtuber(bid: &String, group: &String) -> Result<(), Box<dyn std::error::Error>> {
     let url = format!("https://api.bilibili.com/x/space/acc/info?mid={bid}");
-    println!("{url}");
     let client = reqwest::Client::new();
     //set user-agent
     let res = client
@@ -152,7 +152,6 @@ async fn add_vtuber(bid: &String, group: &String) -> Result<(), Box<dyn std::err
         .text()
         .await?;
     let res: serde_json::Value = serde_json::from_str(&res)?;
-    //println!("{:?}",res);
     let name = res["data"]["name"].as_str();
     if name.is_none() {
         return Err("请求错误，或ID不存在".into());
@@ -168,7 +167,8 @@ async fn add_vtuber(bid: &String, group: &String) -> Result<(), Box<dyn std::err
             group_id,
             live_status,
         })
-        .await?.is_empty()
+        .await?
+        .is_empty()
     {
         r"insert into vtuber(bid,name,group_id,live_status) values(?,?,?,?)"
             .with((bid, name, group, false))

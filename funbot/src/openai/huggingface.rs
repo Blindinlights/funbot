@@ -58,7 +58,6 @@ fn get_file_name() -> String {
         .map(char::from)
         .collect();
     file_name.push_str(".png");
-    println!("file_name:{file_name}");
     file_name
 }
 async fn reply_msg(prompt: String, msg_id: i64) -> Result<(String,String), Box<dyn std::error::Error>> {

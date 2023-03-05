@@ -1,3 +1,4 @@
+use log::error;
 use rustqq::event::reply_trait::Reply;
 use rustqq::event::events::Meassages;
 use rustqq::event::events::Event;
@@ -14,8 +15,6 @@ pub async fn one_quote(event: Event) ->Result<(),Box<dyn std::error::Error>>{
             //reqwest
             let res = reqwest::get(url).await?;
             let text = res.text().await?;
-            //println!("{}", text);
-            //get feilds
             let json: serde_json::Value = serde_json::from_str(&text)?;
             let content=json["data"]["content"].as_str().unwrap();
             let origin=json["data"]["origin"].as_str().unwrap();
@@ -37,8 +36,6 @@ pub async fn bing_pic(event: Event) ->Result<(),Box<dyn std::error::Error>>{
         if e.start_with("/bing_pic"){
             let cmd =e.message.split(' ').collect::<Vec<&str>>();
             let mut day=1;
-            print!("{cmd:?}");
-            //remove empty string
             let cmd:Vec<&str>=cmd.into_iter().filter(|&x| !x.is_empty()).collect();
             if  cmd.len()<=1{
                 e.reply("获取必应壁纸指令\n示例：\n \\bing_pic 1 \n最多获取近七天的壁纸").await?;
@@ -53,12 +50,12 @@ pub async fn bing_pic(event: Event) ->Result<(),Box<dyn std::error::Error>>{
             //reqwest
             let res = reqwest::get(url).await;
             if let Err(err) =&res  {
-                println!("error:{err}");
+                error!("error:{err}");
                 e.reply("获取失败").await?;
             }
             let text = res.unwrap().text().await?;
-            //println!("{}", text);
-            //get feilds
+
+  
             let json: serde_json::Value = serde_json::from_str(&text)?;
             let url=json["images"][0]["url"].as_str().unwrap();
             let title=json["images"][0]["title"].as_str().unwrap();

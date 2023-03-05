@@ -65,7 +65,7 @@ impl AsyncJob {
             if event>*now{
                 return None;
             }
-            println!("excute job {} at {}",self.job_id,event);
+        
             self.last_tick=Some(event);
             let rv=self.run.as_mut().map(|f|f.get_pined());
             return rv;

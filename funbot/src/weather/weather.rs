@@ -7,15 +7,10 @@ async fn weather_query(event: Event) -> Result<(),Box<dyn std::error::Error>> {
     let url="https://restapi.amap.com/v3/weather/weatherInfo?city=610116&key=a5499bb69bcd91946805294b372d437c";
 
     if let Event::GroupMessage(e) = event {
-        println!("weather mod");
         if e.start_with("天气查询") {
                 e.reply("正在查询中.....").await?;
-                //reqwest
                 let res = reqwest::get(url).await?;
                 let text = res.text().await?;
-
-                //println!("{}", text);
-                //get feilds
                 let json: serde_json::Value = serde_json::from_str(&text)?;
                 let province = json["lives"][0]["province"].as_str().unwrap();
                 let city = json["lives"][0]["city"].as_str().unwrap();
@@ -39,8 +34,6 @@ async fn weather_query(event: Event) -> Result<(),Box<dyn std::error::Error>> {
                 //add picture
                 //pic.add_image("https://static.zhihu.com/heifetz/assets/guide-cover-5.294257c3.jpg");
                 pic.add_plain_txt(&msg);
-
-                //reply msg;
                 e.reply(pic.get_msg()).await?;
         }
     }
@@ -52,7 +45,6 @@ async fn weather_report(event: Event) {
     if let Event::GroupMessage(e) = event {
         if e.start_with("天气预报") {
             e.reply("正在查询中.....").await?;
-            //reqwest
             let res = reqwest::get(url).await?;
 
             let text = res.text().await?;

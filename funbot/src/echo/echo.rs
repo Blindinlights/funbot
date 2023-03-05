@@ -191,8 +191,6 @@ async fn get_date(
         res = rights.iter().last().unwrap_or(&&Value::Null)["date"].as_str();
         swap(left, right);
     }
-    println!("left:{left} right:{right}");
-    println!("date:{}", res.unwrap_or(""));
     Ok(res.unwrap_or("").to_owned())
 }
 #[cfg(test)]
@@ -204,9 +202,7 @@ mod test {
         let left = left.chars().next().unwrap() as u32;
         let right = right.chars().next().unwrap() as u32;
         let (mut left, mut right) = (format!("{left:x}"), format!("{right:x}"));
-        println!("{left} {right}");
         let date = get_date(&mut left, &mut right).await.unwrap();
-        println!("https://www.gstatic.com/android/keyboard/emojikitchen/{date}/u{left}/u{left}_u{right}.png")
     }
 }
 #[handler]
@@ -220,7 +216,6 @@ async fn say(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
         let msg = cap.get(1).unwrap().as_str();
         let msg = msg.replace("&#91;", "[");
         let msg = msg.replace("&#93;", "]");
-        println!("{msg}");
         e.reply(msg.as_str()).await?;
     }
     Ok(())

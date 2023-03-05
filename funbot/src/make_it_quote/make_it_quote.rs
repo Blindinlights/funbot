@@ -54,8 +54,6 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 let path = path.replace("file://", "");
                 std::fs::remove_file(path)?;
             }
-        } else {
-            println!("no match");
         }
     }
     Ok(())
