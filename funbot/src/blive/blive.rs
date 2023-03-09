@@ -26,7 +26,6 @@ enum LiveStatus {
 async fn init_db() {
     let pool = mysql_async::Pool::new(URL);
     let conn = pool.get_conn().await.unwrap();
-    //create table vtuber if not exists
     r"CREATE TABLE IF NOT EXISTS vtuber(
         bid VARCHAR(20),
         name VARCHAR(255),
@@ -40,7 +39,6 @@ async fn init_db() {
 async fn get_live_status(bid: &String, group_id: &String) -> LiveStatus {
     let url = format!("https://api.bilibili.com/x/space/acc/info?mid={bid}");
     let client = reqwest::Client::new();
-    //set user-agent
     let res = client
         .get(&url)
         .header(
@@ -123,7 +121,6 @@ async fn update_status() {
             }
             LiveStatus::Offline => {
                 if vtuber.live_status {
-                    //update status
                     r"update vtuber set live_status = false where bid = ? and group_id = ?"
                         .with((vtuber.bid, vtuber.group_id))
                         .ignore(&mut conn)
@@ -133,7 +130,6 @@ async fn update_status() {
             }
             LiveStatus::Error => warn!("api error"),
         }
-        //sleep 0.2s
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     }
 }

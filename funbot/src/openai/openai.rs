@@ -21,10 +21,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
     let url = "https://api.openai.com/v1/images/generations";
     let mut map = HashMap::new();
     map.insert("prompt", prompt);
-    //map.insert("n", "1");
     map.insert("size", "256x256");
-
-    //add header "Content-Type: application/json""Authorization: Bearer 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"
     let api_key = std::env::var("OPENAI_API_KEY")?;
     let api_key = "Bearer {}".replace("{}", &api_key);
     let res = client
@@ -106,9 +103,9 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
         if config.is_command(msg) {
             return Ok(());
         }
+        //info!("{}对Chatbot说：", e.user_id, e.msg());
         let ans = &chat_gpt(e.user_id, msg, 0).await;
         if let Ok(ans) = ans {
-            info!("{}对Chatbot说：{}", e.user_id, e.msg());
             e.reply(ans).await?;
         } else {
             e.reply("token超过4096，将重置记忆").await?;
@@ -258,7 +255,7 @@ async fn get_context_private(
     user_id: i64,
     conn: &mut Conn,
 ) -> Result<Vec<Chat>, Box<dyn std::error::Error>> {
-    insert_context_private(user_id, "default", "", conn).await?;
+    insert_context_private(user_id, "default", "replace", conn).await?;
     let sql = format!(
         "SELECT content FROM private_context WHERE user_id = {}",
         user_id
@@ -266,7 +263,7 @@ async fn get_context_private(
     let res: Vec<String> = conn.query(sql).await.unwrap();
 
     let mut res = res[0].clone();
-    if res.is_empty() {
+    if res == "replace" {
         res = r#"[{
             "role": "system",
             "content": "You are a helpful assistant."

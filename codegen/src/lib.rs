@@ -7,11 +7,8 @@ pub fn post_api(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
     let ident = ast.ident;
     let gen = quote!(
-        //#[async_trait::async_trait]
         impl PostApi for #ident{
              fn post(&self)->serde_json::Value{
-                //tokio::runtime::Runtime::new().unwrap().block_on(post_reqwest(&self));
-               // tokio::runtime::Runtime::new().unwrap().block_on(post_reqwest(&self))
                 todo!()
             }
         }
@@ -35,9 +32,9 @@ pub fn api_name(input: TokenStream) -> TokenStream {
     }
 
     let name = name.into_iter().collect::<String>().to_lowercase();
-    //if contains 'message' replace all 'message' to 'msg'
+   
     let name = name.replace("message", "msg");
-    //delete first '_'
+
     let name = name.trim_start_matches('_').to_string();
     let gen = quote!(
         impl ApiName for #ident{

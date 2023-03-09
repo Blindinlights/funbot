@@ -308,7 +308,6 @@ impl Reply for MsgEvent {
 }
 impl GroupMessage {
     pub fn at_me(&self)->Option<String>{
-        //[CQ:at,qq=self.id] {msg}
         let msg = &self.message;
         let id =self.self_id;
         let regex = format!(r"^\[CQ:at,qq={}\](.+)$",id);

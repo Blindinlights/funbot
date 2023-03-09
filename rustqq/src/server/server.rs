@@ -1,6 +1,4 @@
-//web server
 use std::io::Error;
-
 use crate::app;
 use crate::event::events::*;
 use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};

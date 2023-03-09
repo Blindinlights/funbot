@@ -20,12 +20,10 @@ pub trait ApiName {
 }
 pub async fn send_private_message(user_id: i64, message: String) -> serde_json::Value {
     let api = SendPrivateMessage::new(user_id, message);
-    // api.post()
     todo!()
 }
 pub async fn send_group_message(group_id: i64, message: String) -> serde_json::Value {
     let api = SendGroupMessage::new(group_id, message);
-    //api.post()
     todo!()
 }
 
