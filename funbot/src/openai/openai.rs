@@ -103,17 +103,20 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
         if config.is_command(msg) {
             return Ok(());
         }
-        let ans = &chat_gpt(0, msg, e.group_id)
-            .await
-            .unwrap_or("Token超过限制，记忆重置".to_owned());
-        e.reply(ans).await?;
+        if let Some(msg)=e.at_me(){
+            let ans = &chat_gpt(0, &msg, e.group_id)
+                .await
+                .unwrap_or("Token超过限制，记忆重置".to_owned());
+            e.reply(ans).await?;
+        }
+
     }
     Ok(())
 }
 async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<String> {
-    let pool = get_db()?;
-    let mut conn = pool.get_conn().await?;
-    init_database(&mut conn).await?;
+    let pool = get_db().expect("get db error");
+    let mut conn = pool.get_conn().await.expect("get conn error");
+    init_database(&mut conn).await.expect("init database error");
     let mut context = {
         let res = get_content(user_id, group_id, &mut conn).await.unwrap();
         update_data(user_id, group_id, "", 1, &mut conn);
@@ -169,10 +172,10 @@ async fn init_database(conn: &mut mysql_async::Conn) -> anyhow::Result<()> {
     let sql = r"CREATE TABLE IF NOT EXISTS theme(
         id INT NOT NULL primary key,
         name VARCHAR(255),
-        desc VARCHAR(255),
+        des VARCHAR(255),
         owner BIGINT NOT NULL,
-        group bool NOT NULL,
-        prompt TEXT NOT NULL
+        is_group INT NOT NULL,
+        prompt TEXT 
     );
     CREATE TABLE IF NOT EXISTS private_context(
         theme_id INT,
@@ -228,7 +231,7 @@ async fn update_data(
 async fn update_theme(
     user_id: i64,
     group_id: i64,
-    theme_id: i64,
+    theme_id: i32,
     conn: &mut mysql_async::Conn,
 ) -> anyhow::Result<()> {
     let table = if user_id != 0 {
@@ -262,7 +265,7 @@ async fn get_content(user_id: i64, group_id: i64, conn: &mut Conn) -> anyhow::Re
 
     let res: Vec<Chat> = if res.is_empty() {
 
-        let theme_prompt = get_theme_prompt().await?;
+        let theme_prompt = get_theme_prompt(theme_id,conn).await?;
         let system_chat = Chat {
             role: "system".to_string(),
             content: "You are a helpful assistant.".to_string(),
@@ -292,8 +295,13 @@ async fn init_raw(user_id: i64, group_id: i64, conn: &mut Conn) -> anyhow::Resul
         })?;
     Ok(())
 }
-async fn get_theme_prompt() -> anyhow::Result<String> {
-    todo!();
+async fn get_theme_prompt(theme_id: i32,conn:&mut Conn) -> anyhow::Result<String> {
+    if theme_id == 0 {
+        return Ok("".to_string());
+    }
+    let sql = format!("SELECT prompt FROM theme WHERE id = {}",theme_id);
+    let res:Vec<String>=conn.query(&sql).await.unwrap_or(vec!["".to_string()]);
+    Ok(res[0].clone())
 }
 fn get_table_name(user_id: i64, group_id: i64) -> String {
     if user_id != 0 {
