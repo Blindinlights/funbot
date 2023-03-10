@@ -1,3 +1,4 @@
+use anyhow;
 use log::{debug, info, log};
 use mysql_async::{
     self,
@@ -12,9 +13,7 @@ use rustqq::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-#[allow(unused)]
 use std::collections::HashMap;
-use std::fmt::format;
 
 async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
@@ -77,21 +76,12 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
             let pool = get_db()?;
             match e {
                 MsgEvent::GroupMessage(e) => {
-                    let mut conn = pool.get_conn().await?;
-                    let group_id = e.group_id;
-                    let user_id = e.user_id;
-                    update_context_group("", group_id, 0, &mut conn).await?;
-                    drop(conn);
-                    pool.disconnect().await?;
+                    reset_content(0, e.group_id).await?;
                     e.reply("reset success").await?;
                     return Ok(());
                 }
                 MsgEvent::PrivateMessage(e) => {
-                    let mut conn = pool.get_conn().await?;
-                    let user_id = e.user_id;
-                    update_context_private("", user_id, 0, &mut conn).await?;
-                    drop(conn);
-                    pool.disconnect().await?;
+                    reset_content(e.user_id, 0).await?;
                     e.reply("reset success").await?;
                     return Ok(());
                 }
@@ -103,44 +93,20 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
         if config.is_command(msg) {
             return Ok(());
         }
-        //info!("{}对Chatbot说：", e.user_id, e.msg());
-        let ans = &chat_gpt(e.user_id, msg, 0).await;
-        if let Ok(ans) = ans {
-            e.reply(ans).await?;
-        } else {
-            e.reply("token超过4096，将重置记忆").await?;
-            let pool = get_db()?;
-            let mut conn = pool.get_conn().await?;
-            update_context_private("", e.user_id, 0, &mut conn).await?;
-            drop(conn);
-            pool.disconnect().await?;
-        }
+        let ans = &chat_gpt(e.user_id, msg, 0)
+            .await
+            .unwrap_or("Token超过限制，记忆重置".to_owned());
+        e.reply(ans).await?;
     };
     if let Event::GroupMessage(ref e) = event {
         let msg = e.message.as_str();
         if config.is_command(msg) {
             return Ok(());
         }
-        if let Some(msg) = e.at_me() {
-            let ans = &chat_gpt(0, &msg, e.group_id).await;
-            if let Ok(ans) = ans {
-                info!(
-                    "{}在群（{}）对Chatbot说：{}",
-                    e.user_id,
-                    e.group_id,
-                    e.msg()
-                );
-                //let ans = format!("{}: {}", e.sender.nickname, ans);
-                e.reply(ans).await?;
-            } else {
-                e.reply("token超过4096，将重置记忆").await?;
-                let pool = get_db()?;
-                let mut conn = pool.get_conn().await?;
-                update_context_group("", e.group_id, 0, &mut conn).await?;
-                drop(conn);
-                pool.disconnect().await?;
-            }
-        }
+        let ans = &chat_gpt(0, msg, e.group_id)
+            .await
+            .unwrap_or("Token超过限制，记忆重置".to_owned());
+        e.reply(ans).await?;
     }
     Ok(())
 }
@@ -148,11 +114,10 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
     let pool = get_db()?;
     let mut conn = pool.get_conn().await?;
     init_database(&mut conn).await?;
-
-    let mut context = if user_id != 0 {
-        get_context_private(user_id, &mut conn).await.unwrap()
-    } else {
-        get_context_group(group_id, &mut conn).await.unwrap()
+    let mut context = {
+        let res = get_content(user_id, group_id, &mut conn).await.unwrap();
+        update_data(user_id, group_id, "", 1, &mut conn);
+        res
     };
     let new_chat = Chat {
         role: "user".to_string(),
@@ -180,6 +145,7 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
 
     let ans = v["choices"][0]["message"]["content"].as_str();
     if ans.is_none() {
+        update_data(user_id, group_id, "", 0, &mut conn).await?;
         return anyhow::Result::Err(anyhow::anyhow!("max token 4096"));
     }
     let role = v["choices"][0]["message"]["role"]
@@ -189,36 +155,34 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
         role: role.to_string(),
         content: ans.unwrap().to_string(),
     };
-
     context.push(new_chat);
-
     let new_chat = serde_json::to_string(&context)?;
-    if user_id != 0 {
-        update_context_private(&new_chat, user_id, 0, &mut conn).await?;
-    } else {
-        update_context_group(&new_chat, group_id, 0, &mut conn).await?;
-    }
+    update_data(user_id, group_id, &new_chat, 0, &mut conn).await?;
     drop(conn);
     pool.disconnect().await?;
     let ans = ans.unwrap().to_string();
-    info!("Chatbot:{}", ans);
+    debug!("GPT response: {}", &ans);
     Ok(ans)
 }
 
 async fn init_database(conn: &mut mysql_async::Conn) -> anyhow::Result<()> {
     let sql = r"CREATE TABLE IF NOT EXISTS theme(
-        id INT NOT NULL AUTO_INCREMENT primary key,
+        id INT NOT NULL primary key,
+        name VARCHAR(255),
+        desc VARCHAR(255),
+        owner BIGINT NOT NULL,
+        group bool NOT NULL,
         prompt TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS private_context(
         theme_id INT,
-        user_id INT NOT NULL PRIMARY KEY,
+        id BIGINT NOT NULL PRIMARY KEY,
         content TEXT,
         pending INT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS group_context(
         theme_id INT ,
-        group_id INT NOT NULL PRIMARY KEY,
+        id BIGINT NOT NULL PRIMARY KEY,
         content TEXT,
         pending INT NOT NULL
     );
@@ -226,101 +190,117 @@ async fn init_database(conn: &mut mysql_async::Conn) -> anyhow::Result<()> {
     sql.ignore(conn).await?;
     Ok(())
 }
-async fn update_context_private(
-    new_chat: &str,
+
+async fn reset_content(user_id: i64, group_id: i64) -> anyhow::Result<()> {
+    let pool = get_db()?;
+    let mut conn = pool.get_conn().await?;
+    init_database(&mut conn).await?;
+    update_data(user_id, group_id, "", 0, &mut conn).await?;
+    drop(conn);
+    pool.disconnect().await?;
+    Ok(())
+}
+
+async fn update_data(
     user_id: i64,
+    group_id: i64,
+    prompt: &str,
     pending: i32,
     conn: &mut mysql_async::Conn,
 ) -> anyhow::Result<()> {
-    "UPDATE private_context SET content = ?,pending = ? WHERE user_id = ?"
-        .with((new_chat, pending, user_id))
+    let table = if user_id != 0 {
+        "private_context"
+    } else {
+        "group_context"
+    };
+    let sql = "INSERT INTO table VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE content = ?,pending = ?";
+    let sql = sql.replace("table", table);
+    sql.with((0, user_id + group_id, prompt, pending, prompt, pending))
         .ignore(conn)
-        .await?;
+        .await
+        .map_err(|e| {
+            error!("{}", e);
+            e
+        })?;
     Ok(())
 }
-async fn update_context_group(
-    new_chat: &str,
+
+async fn update_theme(
+    user_id: i64,
     group_id: i64,
-    pending: i32,
+    theme_id: i64,
     conn: &mut mysql_async::Conn,
 ) -> anyhow::Result<()> {
-    "UPDATE group_context SET content = ?,pending = ? WHERE group_id = ?"
-        .with((new_chat, pending, group_id))
+    let table = if user_id != 0 {
+        "private_context"
+    } else {
+        "group_context"
+    };
+    todo!("get theme prompt from theme_id");
+    todo!("update theme prompt to table");
+    Ok(())
+}
+
+async fn get_content(user_id: i64, group_id: i64, conn: &mut Conn) -> anyhow::Result<Vec<Chat>> {
+    let table = get_table_name(user_id, group_id);
+    init_raw(user_id, group_id, conn).await?;
+    let sql = format!(
+        "SELECT theme_id,content FROM {} WHERE id = {} AND pending = 0",
+        table,
+        user_id + group_id
+    );
+    let res = loop {
+        let res: Vec<(i32,String)> = conn.query(&sql).await.unwrap();
+        if res.is_empty() {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            debug!("waiting for chatbot response...");
+            continue;
+        }
+        break res;
+    };
+    let (theme_id,res) = res[0].clone();
+
+    let res: Vec<Chat> = if res.is_empty() {
+
+        let theme_prompt = get_theme_prompt().await?;
+        let system_chat = Chat {
+            role: "system".to_string(),
+            content: "You are a helpful assistant.".to_string(),
+        };
+        let theme_chat = Chat {
+            role: "user".to_string(),
+            content: theme_prompt,
+        };
+        vec![system_chat, theme_chat]
+    } else {
+        serde_json::from_str(&res).unwrap()
+    };
+    Ok(res)
+}
+
+async fn init_raw(user_id: i64, group_id: i64, conn: &mut Conn) -> anyhow::Result<()> {
+    let table = get_table_name(user_id, group_id);
+    let insert = format!("INSERT IGNORE INTO {} VALUES(?,?,?,?)", table);
+    let error_sql = insert.clone();
+    insert
+        .with((0, user_id + group_id, "", 0))
         .ignore(conn)
-        .await?;
+        .await
+        .map_err(|e| {
+            error!("MySQL初始化行出现问题，sql:{}\n{}", error_sql, e);
+            e
+        })?;
     Ok(())
 }
-
-async fn get_context_private(
-    user_id: i64,
-    conn: &mut Conn,
-) -> Result<Vec<Chat>, Box<dyn std::error::Error>> {
-    insert_context_private(user_id, "default", "replace", conn).await?;
-    let sql = format!(
-        "SELECT content FROM private_context WHERE user_id = {}",
-        user_id
-    );
-    let res: Vec<String> = conn.query(sql).await.unwrap();
-
-    let mut res = res[0].clone();
-    if res == "replace" {
-        res = r#"[{
-            "role": "system",
-            "content": "You are a helpful assistant."
-        }]"#
-        .to_string();
+async fn get_theme_prompt() -> anyhow::Result<String> {
+    todo!();
+}
+fn get_table_name(user_id: i64, group_id: i64) -> String {
+    if user_id != 0 {
+        "private_context".to_string()
+    } else {
+        "group_context".to_string()
     }
-    let res: Vec<Chat> = serde_json::from_str(&res).unwrap();
-
-    Ok(res)
-}
-async fn insert_context_private(
-    user_id: i64,
-    theme: &str,
-    content: &str,
-    conn: &mut Conn,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let sql = format!(
-        "INSERT IGNORE INTO private_context VALUES({},\"{}\", \"{}\", 0)",
-        theme, user_id, content
-    );
-    sql.ignore(conn).await?;
-    Ok(())
-}
-async fn insert_context_group(
-    group_id: i64,
-    theme: &str,
-    content: &str,
-    conn: &mut Conn,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let sql = format!(
-        "INSERT IGNORE INTO group_context VALUES({},\"{}\", \"{}\", 0)",
-        theme, group_id, content
-    );
-    sql.ignore(conn).await?;
-    Ok(())
-}
-async fn get_context_group(
-    group_id: i64,
-    conn: &mut Conn,
-) -> Result<Vec<Chat>, Box<dyn std::error::Error>> {
-    insert_context_group(group_id, "default", "", conn).await?;
-    let sql = format!(
-        "SELECT content FROM group_context WHERE group_id = {}",
-        group_id
-    );
-    let res: Vec<String> = conn.query(sql).await?;
-
-    let mut res = res[0].clone();
-    if res.is_empty() {
-        res = r#"[{
-            "role": "system",
-            "content": "You are a helpful assistant."
-        }]"#
-        .to_string();
-    }
-    let res: Vec<Chat> = serde_json::from_str(&res)?;
-    Ok(res)
 }
 fn get_db() -> anyhow::Result<mysql_async::Pool> {
     let mut url = std::env::var("DATABASE_URL")?;
