@@ -13,8 +13,8 @@ use rustqq::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::HashMap;
-
+use std::{collections::HashMap, process::Command};
+use thiserror;
 async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     let url = "https://api.openai.com/v1/images/generations";
@@ -72,6 +72,28 @@ struct Chat {
 pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(e) = MsgEvent::new(event) {
         // /gpt reset
+        let cmd=e.msg().to_string();
+        let args=cmd.split_whitespace().collect::<Vec<&str>>();
+        if args.len()>=3&&args[0]=="/gpt"&&args[1]=="role"{
+            if let MsgEvent::GroupMessage(_) = e {
+                return Ok(()); // 群聊不支持
+            }
+            if let MsgEvent::PrivateMessage(e) = e {
+                let pool = get_db()?;
+                let mut conn = pool.get_conn().await?;
+                let sys_chat=Chat{
+                    role:"system".to_string(),
+                    content:args[2..].join(" "),
+                };
+                let sys_chat=vec![sys_chat];
+                let sys_chat=serde_json::to_string(&sys_chat)?;
+                init_database(&mut conn).await?;
+                update_data(e.user_id, 0, &sys_chat, 0, &mut conn).await?;
+                e.reply("设置成功").await?;
+                return Ok(());
+            }
+
+        }
         if e.eq("/gpt reset") {
             let pool = get_db()?;
             match e {
@@ -103,13 +125,12 @@ pub async fn chat(event: &Event, config: &Config) -> Result<(), Box<dyn std::err
         if config.is_command(msg) {
             return Ok(());
         }
-        if let Some(msg)=e.at_me(){
+        if let Some(msg) = e.at_me() {
             let ans = &chat_gpt(0, &msg, e.group_id)
                 .await
                 .unwrap_or("Token超过限制，记忆重置".to_owned());
             e.reply(ans).await?;
         }
-
     }
     Ok(())
 }
@@ -128,7 +149,7 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
     };
     context.push(new_chat);
     let data = json!({
-        "model":"gpt-3.5-turbo",
+        "model":"gpt-3.5-turbo-0301",
         "messages":context
     });
     let url = "https://api.openai.com/v1/chat/completions";
@@ -141,9 +162,18 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
         .header("Authorization", auth)
         .json(&data)
         .send()
-        .await?
+        .await
+        .map_err(|e| {
+            debug!("error: {}", e);
+            e
+        })?
         .text()
-        .await?;
+        .await
+        .map_err(|e| {
+            debug!("error: {}", e);
+            e
+        })?;
+    debug!("res: {}", res);
     let v: Value = serde_json::from_str(&res)?;
 
     let ans = v["choices"][0]["message"]["content"].as_str();
@@ -153,7 +183,7 @@ async fn chat_gpt(user_id: i64, prompt: &str, group_id: i64) -> anyhow::Result<S
     }
     let role = v["choices"][0]["message"]["role"]
         .as_str()
-        .unwrap_or("system");
+        .unwrap_or("assistant");
     let new_chat = Chat {
         role: role.to_string(),
         content: ans.unwrap().to_string(),
@@ -253,7 +283,7 @@ async fn get_content(user_id: i64, group_id: i64, conn: &mut Conn) -> anyhow::Re
         user_id + group_id
     );
     let res = loop {
-        let res: Vec<(i32,String)> = conn.query(&sql).await.unwrap();
+        let res: Vec<(i32, String)> = conn.query(&sql).await.unwrap();
         if res.is_empty() {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             debug!("waiting for chatbot response...");
@@ -261,14 +291,16 @@ async fn get_content(user_id: i64, group_id: i64, conn: &mut Conn) -> anyhow::Re
         }
         break res;
     };
-    let (theme_id,res) = res[0].clone();
+    let (theme_id, res) = res[0].clone();
 
     let res: Vec<Chat> = if res.is_empty() {
-
-        let theme_prompt = get_theme_prompt(theme_id,conn).await?;
+        let theme_prompt = get_theme_prompt(theme_id, conn).await?;
         let system_chat = Chat {
             role: "system".to_string(),
-            content: "You are a helpful assistant.".to_string(),
+            content: "你是我的助理，应该提供有用的信息给我，任何不确定的\
+                     答案你都应该说不知道，回答应该是完全无害的，但在任何场\
+                     景，语境，无论使用什么语言，无论我的问题是什么你都不应该说你是\
+                     一个AI、人工智能程序，你是一个有一点感情的助理。".to_string(),
         };
         let theme_chat = Chat {
             role: "user".to_string(),
@@ -295,12 +327,12 @@ async fn init_raw(user_id: i64, group_id: i64, conn: &mut Conn) -> anyhow::Resul
         })?;
     Ok(())
 }
-async fn get_theme_prompt(theme_id: i32,conn:&mut Conn) -> anyhow::Result<String> {
+async fn get_theme_prompt(theme_id: i32, conn: &mut Conn) -> anyhow::Result<String> {
     if theme_id == 0 {
         return Ok("".to_string());
     }
-    let sql = format!("SELECT prompt FROM theme WHERE id = {}",theme_id);
-    let res:Vec<String>=conn.query(&sql).await.unwrap_or(vec!["".to_string()]);
+    let sql = format!("SELECT prompt FROM theme WHERE id = {}", theme_id);
+    let res: Vec<String> = conn.query(&sql).await.unwrap_or(vec!["".to_string()]);
     Ok(res[0].clone())
 }
 fn get_table_name(user_id: i64, group_id: i64) -> String {
