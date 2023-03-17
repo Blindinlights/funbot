@@ -44,11 +44,11 @@ impl HuggingFace {
     }
     pub fn open_journey() -> Self {
         let api_key = std::env::var("HUGGINGFACE_API_KEY").unwrap();
-        let hf = HuggingFace::new(
+
+        HuggingFace::new(
             format!("Bearer {api_key}"),
             "https://api-inference.huggingface.co/models/prompthero/openjourney".to_string(),
-        );
-        hf
+        )
     }
 }
 fn get_file_name() -> String {
@@ -60,7 +60,10 @@ fn get_file_name() -> String {
     file_name.push_str(".png");
     file_name
 }
-async fn reply_msg(prompt: String, msg_id: i64) -> Result<(String,String), Box<dyn std::error::Error>> {
+async fn reply_msg(
+    prompt: String,
+    msg_id: i64,
+) -> Result<(String, String), Box<dyn std::error::Error>> {
     let hf = HuggingFace::open_journey();
     let file_name = get_file_name();
     let mut path = path::PathBuf::from("./");
@@ -73,15 +76,15 @@ async fn reply_msg(prompt: String, msg_id: i64) -> Result<(String,String), Box<d
     let mut raw_msg = RowMessage::new();
     raw_msg.reply(msg_id);
     raw_msg.add_image(&path);
-    let path=path.replace("file://","");
-    Ok((raw_msg.get_msg().to_string(),path))
+    let path = path.replace("file://", "");
+    Ok((raw_msg.get_msg().to_string(), path))
 }
 #[handler]
 async fn open_journey(event: Event) -> Result<(), std::error::Error> {
-    if let Event::GroupMessage(ref msg) = event{
+    if let Event::GroupMessage(ref msg) = event {
         if msg.start_with("/journey") {
             let prompt = msg.message.replace("/journey", "");
-            let (reply_msg,path) = reply_msg(prompt, msg.message_id).await?;
+            let (reply_msg, path) = reply_msg(prompt, msg.message_id).await?;
             msg.reply(&reply_msg).await?;
             std::fs::remove_file(path)?;
         }
@@ -89,7 +92,7 @@ async fn open_journey(event: Event) -> Result<(), std::error::Error> {
     if let Event::PrivateMessage(ref msg) = event {
         if msg.start_with("/journey") {
             let prompt = msg.message.replace("/journey", "");
-            let (reply_msg,path) = reply_msg(prompt, msg.message_id).await?;
+            let (reply_msg, path) = reply_msg(prompt, msg.message_id).await?;
             msg.reply(&reply_msg).await?;
             std::fs::remove_file(path)?;
         }

@@ -1102,6 +1102,7 @@ dependencies = [
  "scraper",
  "serde",
  "serde_json",
+ "thiserror",
  "tiktoken-rs",
  "tokio",
 ]

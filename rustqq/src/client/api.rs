@@ -9,6 +9,7 @@ pub async fn post_reqwest<T: Serialize + ApiName>(api: &T) -> Result<Value,Box<d
     let ip = "127.0.0.1:8080";
     let api_url = format!("http://{}/{}", ip, api.name());
     let client = Client::new();
+    
     let res = client.post(&api_url).json(api).send().await?;
     let res = res.text().await.unwrap();
     let res: serde_json::Value = serde_json::from_str(&res)?;
