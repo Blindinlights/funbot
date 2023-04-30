@@ -1,4 +1,6 @@
 extern crate proc_macro;
+use std::{collections::HashMap};
+
 use async_trait::async_trait;
 use codegen::Meassages;
 
@@ -307,13 +309,111 @@ impl Reply for MsgEvent {
     }
 }
 impl GroupMessage {
-    pub fn at_me(&self)->Option<String>{
+    pub fn at_me(&self) -> Option<String> {
         let msg = &self.message;
-        let id =self.self_id;
-        let regex = format!(r"^\[CQ:at,qq={}\](.+)$",id);
+        let id = self.self_id;
+        let regex = format!(r"^\[CQ:at,qq={}\](.+)$", id);
         let re = regex::Regex::new(&regex).unwrap();
         if let Some(caps) = re.captures(msg) {
             return Some(caps[1].to_string());
+        }
+        None
+    }
+}
+pub enum CQCodeType {
+    Image,
+    Video,
+    Face,
+    Audio,
+    Text,
+}
+impl std::fmt::Display for CQCodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CQCodeType::Image => write!(f, "image"),
+            CQCodeType::Video => write!(f, "video"),
+            CQCodeType::Face => write!(f, "face"),
+            CQCodeType::Audio => write!(f, "audio"),
+            CQCodeType::Text => write!(f, "text"),
+        }
+    }
+}
+pub struct CQCodeSeq {
+    pub code_type: CQCodeType,
+    pub data: HashMap<String, String>,
+}
+
+impl From<String> for CQCodeSeq {
+    fn from(s: String) -> Self {
+        let mut iter = s.split(',');
+        let code_type = iter.next().unwrap().split(':').nth(1).unwrap();
+        let code_type = CQCodeType::from(code_type);
+        let mut data = HashMap::new();
+        iter.for_each(|s| {
+            let mut iter = s.split('=');
+            let k = iter.next().unwrap().to_string();
+            let v = iter.next().unwrap().to_string();
+            data.insert(k, v);
+        });
+        CQCodeSeq { code_type, data }
+    }
+}
+impl From<&str> for CQCodeType {
+    fn from(s: &str) -> Self {
+        match s {
+            "image" => CQCodeType::Image,
+            "video" => CQCodeType::Video,
+            "face" => CQCodeType::Face,
+            "audio" => CQCodeType::Audio,
+            "text" => CQCodeType::Text,
+            _ => panic!("unknown code type {}", s),
+        }
+    }
+}
+impl From<CQCodeSeq> for String {
+    fn from(value: CQCodeSeq) -> Self {
+        if let CQCodeType::Text = value.code_type {
+            return value.data.get("text").unwrap().to_string();
+        }
+        let mut res = format!("CQ:{}", value.code_type);
+        value.data.iter().for_each(|(k, v)| {
+            let seq = format!(",{}={}", k, v);
+            res.push_str(&seq);
+        });
+        res
+    }
+}#[allow(dead_code)]
+pub struct Meassage{
+    inner:Vec<CQCodeSeq>
+}
+impl  From<String> for Meassage{
+    fn from(s:String)->Self{
+        let mut inner=Vec::new();
+        let re=regex::Regex::new(r"\[CQ:.*?\]").unwrap();
+        for cap in re.captures_iter(&s){
+            let cap=cap.get(0).unwrap().as_str().to_string();
+            inner.push(CQCodeSeq::from(cap));
+        }
+        Meassage{inner}
+    }
+}
+impl CQCodeSeq{
+    pub fn new_from_str(seq:&str)->Option<Self>{
+        //remove '[' ']'
+        let seq=seq.trim();
+        let seq=seq[1..seq.len()-1].to_string();
+        let mut iter=seq.split(',');
+        let code_type=iter.next().unwrap().split(':').nth(1);
+        if let Some(code_type)=code_type{
+            let code_type=CQCodeType::from(code_type);
+            let mut data=HashMap::new();
+            iter.for_each(|s|{
+                let mut iter=s.split('=');
+                let k=iter.next().unwrap().to_string();
+                let v=iter.next().unwrap().to_string();
+                data.insert(k,v);
+            });
+            return Some(CQCodeSeq{code_type,data});
         }
         None
 

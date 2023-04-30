@@ -19,8 +19,12 @@ regex = "1.7.0"
 tokio = { version = "1.0.2", features = ["full","macros"] }
 scraper = "0.14.0"
 mysql_async = "0.31.2"
-tiktoken-rs ="0.1.0"
+tiktoken-rs ={version="0.4.2",features =["async-openai"]}
 anyhow = "1.0.40"
 log ="0.4.17"
-pretty_env_logger = "0.4"
+colored = "2.0.0"
 thiserror = "1.0.26"
+sqlx = { version = "0.6.3", features = ["postgres","macros","runtime-actix-native-tls","offline"] }
+async-openai = "0.10.3"
+fern="0.6.0"
+chrono = { version = "0.4.19"}

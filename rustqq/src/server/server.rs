@@ -14,17 +14,17 @@ async fn index(data: String, handler: web::Data<app::App>) -> impl Responder {
         }
         match &event{
             Event::GroupMessage(e)=>{
-                info!("收到群消息（{}） {}说{}",e.group_id,e.sender.nickname,e.msg())
+                info!(target:"rustqq","收到群消息（{}） {}说{}",e.group_id,e.sender.nickname,e.msg())
             },
             Event::PrivateMessage(e)=>{
-                info!("收到{}（{}）的消息：{}",e.sender.nickname,e.user_id,e.msg())
+                info!(target:"rustqq","收到{}（{}）的消息：{}",e.sender.nickname,e.user_id,e.msg())
             }
             _=>{
             }
         }
         let res = (*handler).handle_event(&event).await;
         if let Err(err) = res {
-            log::error!("{}",err)
+            log::error!(target:"rustqq","{}",err)
         }
     }
     HttpResponse::Ok().body("Hello world!")

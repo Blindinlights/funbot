@@ -202,7 +202,7 @@ mod test {
         let left = left.chars().next().unwrap() as u32;
         let right = right.chars().next().unwrap() as u32;
         let (mut left, mut right) = (format!("{left:x}"), format!("{right:x}"));
-        let date = get_date(&mut left, &mut right).await.unwrap();
+        let _date = get_date(&mut left, &mut right).await.unwrap();
     }
 }
 #[handler]

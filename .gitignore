@@ -1,10 +1,6 @@
-/target
 /rustqq/target
 /codegen/target
-/err.json
-/a.json
-/crawl/.idea
-/crawl/__pycache__
-/.obsidian
-/a.txt
-/Cargo.lock
+Cargo.lock
+*.py
+*.env
+target
