@@ -14,11 +14,11 @@ Bot’s QQ:2834957564
 
 Clear the current conversation history,and reset system prompt to default.
 
-### /gpt role <prompt>
+### /gpt role \<prompt\>
 
-Set the system prompt to <prompt>.
+Set the system prompt to \<prompt\>.
 
-### /gpt4 <msg>
+### /gpt4 \<msg\>
 
 Chat with GPT-4.
 
