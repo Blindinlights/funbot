@@ -2,29 +2,18 @@ extern crate fern;
 #[macro_use]
 extern crate log;
 use rustqq::app;
-mod blive;
 mod echo;
-mod festival;
 mod make_it_quote;
 mod openai;
 mod quote;
-mod weather;
 use echo::{emoji_mix, url_preview};
 use make_it_quote::quote_it;
 use openai::{gpt4, gpt_group, gpt_private, open_journey};
-use quote::{bing_pic, one_quote};
-use rustqq::app::AsyncJobScheduler;
-use weather::{weather_query, weather_report};
+use quote::bing_pic;
 #[actix_web::main]
 async fn main() {
     setup_logger().unwrap();
-    let mut scheduler = AsyncJobScheduler::new();
-    scheduler.add_job(festival::get_job());
-    scheduler.add_job(blive::blive_job());
-    let mut app = app::App::new()
-        .event(Box::new(weather_report))
-        .event(Box::new(weather_query))
-        .event(Box::new(one_quote))
+    let mut app = app::App::new() 
         .event(Box::new(bing_pic))
         .event(Box::new(url_preview))
         .event(Box::new(quote_it))

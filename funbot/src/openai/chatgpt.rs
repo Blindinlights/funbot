@@ -51,10 +51,125 @@ async fn open_image(event: Event) -> Result<(), Box<dyn std::error::Error>> {
     }
     Ok(())
 }
+#[handler]
+pub async fn gpt4(event: &Event, config: &Config) -> Result<(), HandlerError> {
+    if let Some(msg_event) = MsgEvent::new(event) {
+        if msg_event.start_with("/gpt4") {
+            let msg = msg_event.msg().trim_start_matches("/gpt4").trim();
+            let res = gpt_4_chat(msg)
+                .await
+                .map_err(|e| {
+                    error!("{}", e);
+                    e
+                })
+                .ok()
+                .unwrap_or("Failed to get response".to_string());
+            msg_event.reply(&res).await?;
+        }
+    }
+    Ok(())
+}
+#[handler]
+pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerError> {
+    if let Event::PrivateMessage(ref e) = event {
+        if e.start_with("/gpt") {
+            let user_id = e.user_id;
+            let args = e.msg().trim_start_matches("/gpt").trim();
+            if args == "reset" {
+                let res = priv_chat_reset(user_id).await;
+                if res.is_ok() {
+                    e.reply(
+                        "已经帮您重置了对话记录和system prompt啦！现在我们可以开始全新的对话啦!",
+                    )
+                    .await?;
+                } else {
+                    e.reply(
+                        "重置失败了呢~ (´；ω；｀) 您可以稍后再试一次，或者联系管理员寻求帮助哦！",
+                    )
+                    .await?;
+                }
+            } else if args.starts_with("role") {
+                let prompt = args.trim_start_matches("role").trim();
+                let res = priv_chat_update_system(user_id, prompt).await;
+                if res.is_ok() {
+                    e.reply("system prompt已经更新完毕(≧◡≦)").await?;
+                } else {
+                    e.reply("更新失败啦，请您耐心等待片刻后再试试吧~ (๑•́ ₃ •̀๑)")
+                        .await?;
+                }
+            } else {
+                return Ok(());
+            }
+        } else {
+            let user_id = e.user_id;
+            let msg = e.msg();
+            let res = private_chat(user_id, msg).await;
+            if let Ok(res) = res {
+                e.reply(&res).await?;
+            } else {
+                error!(target:"funbot","对话失败：{:?}", res);
+                priv_chat_update_in_use(user_id, false).await?;
+                e.reply("哎呀，bot又犯糊涂了~ (｡•́︿•̀｡)\n请您再试一次或者联系管理员哦！")
+                    .await?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[handler]
+async fn gpt_group(event: &Event, config: &Config) -> Result<(), HandlerError> {
+    if let Event::GroupMessage(ref e) = event {
+        if let Some(prompt) = e.at_me() {
+            let group_id = e.group_id;
+            let nick_name = e.sender.nickname.clone();
+            let res = group_chat(group_id, &prompt, &nick_name).await;
+            if let Ok(res) = res {
+                e.reply(&res).await?;
+            } else {
+                error!(target:"funbot","对话失败：{:?}", res);
+                e.reply("哎呀，bot又犯糊涂了~ (｡•́︿•̀｡)\n请您再试一次或者联系管理员哦！")
+                    .await?;
+            }
+            return Ok(());
+        }
+        let msg = e.msg().to_string();
+        if msg.starts_with("/gpt") {
+            let args = msg.trim_start_matches("/gpt").trim();
+            if args == "reset" {
+                let res = group_chat_reset(e.group_id).await;
+                if res.is_ok() {
+                    e.reply(
+                        "已经帮您重置了对话记录和system prompt啦！现在我们可以开始全新的对话啦!",
+                    )
+                    .await?;
+                } else {
+                    e.reply(
+                        "重置失败了呢~ (´；ω；｀) 您可以稍后再试一次，或者联系管理员寻求帮助哦！",
+                    )
+                    .await?;
+                }
+            } else if args.starts_with("role") {
+                let prompt = args.trim_start_matches("role").trim();
+                let res = group_chat_update_system(e.group_id, prompt).await;
+                if res.is_ok() {
+                    e.reply("system prompt已经更新完毕(≧◡≦)").await?;
+                } else {
+                    group_chat_update_in_use(e.group_id, false).await?;
+                    e.reply("更新失败啦，请您耐心等待片刻后再试试吧~ (๑•́ ₃ •̀๑)")
+                        .await?;
+                }
+            } else {
+                return Ok(());
+            }
+        }
+    }
+
+    Ok(())
+}
 
 async fn gpt_4_chat(msg: &str) -> anyhow::Result<String> {
     let url = "https://api.openai.com/v1/chat/completions";
-
     let sys = Chat {
         role: Role::System,
         content: "you are a useful assistant.".to_string(),
@@ -86,26 +201,6 @@ async fn gpt_4_chat(msg: &str) -> anyhow::Result<String> {
 
     Ok(res)
 }
-#[handler]
-pub async fn gpt4(event: &Event, config: &Config) -> Result<(), HandlerError> {
-    if let Some(msg_event) = MsgEvent::new(event) {
-        if msg_event.start_with("/gpt4") {
-            let msg = msg_event.msg().trim_start_matches("/gpt4").trim();
-            let res = gpt_4_chat(msg)
-                .await
-                .map_err(|e| {
-                    error!("{}", e);
-                    e
-                })
-                .ok()
-                .unwrap_or("Failed to get response".to_string());
-            msg_event.reply(&res).await?;
-        }
-    }
-    Ok(())
-}
-// update private chat history
-
 async fn priv_chat_init(user_id: i64) -> anyhow::Result<()> {
     let pool = get_pgpool().await?;
     sqlx::query!(
@@ -332,104 +427,7 @@ fn build_openai(url: &str) -> reqwest::RequestBuilder {
         .bearer_auth(api_key)
         .header("Content-Type", "application/json")
 }
-#[handler]
-pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerError> {
-    if let Event::PrivateMessage(ref e) = event {
-        if e.start_with("/gpt") {
-            let user_id = e.user_id;
-            let args = e.msg().trim_start_matches("/gpt").trim();
-            if args == "reset" {
-                let res = priv_chat_reset(user_id).await;
-                if res.is_ok() {
-                    e.reply(
-                        "已经帮您重置了对话记录和system prompt啦！现在我们可以开始全新的对话啦!",
-                    )
-                    .await?;
-                } else {
-                    e.reply(
-                        "重置失败了呢~ (´；ω；｀) 您可以稍后再试一次，或者联系管理员寻求帮助哦！",
-                    )
-                    .await?;
-                }
-            } else if args.starts_with("role") {
-                let prompt = args.trim_start_matches("role").trim();
-                let res = priv_chat_update_system(user_id, prompt).await;
-                if res.is_ok() {
-                    e.reply("system prompt已经更新完毕(≧◡≦)").await?;
-                } else {
-                    e.reply("更新失败啦，请您耐心等待片刻后再试试吧~ (๑•́ ₃ •̀๑)")
-                        .await?;
-                }
-            } else {
-                return Ok(());
-            }
-        } else {
-            let user_id = e.user_id;
-            let msg = e.msg();
-            let res = private_chat(user_id, msg).await;
-            if let Ok(res) = res {
-                e.reply(&res).await?;
-            } else {
-                error!(target:"funbot","对话失败：{:?}", res);
-                priv_chat_update_in_use(user_id, false).await?;
-                e.reply("哎呀，bot又犯糊涂了~ (｡•́︿•̀｡)\n请您再试一次或者联系管理员哦！")
-                    .await?;
-            }
-        }
-    }
-    Ok(())
-}
 
-#[handler]
-async fn gpt_group(event: &Event, config: &Config) -> Result<(), HandlerError> {
-    if let Event::GroupMessage(ref e) = event {
-        if let Some(prompt) = e.at_me() {
-            let group_id = e.group_id;
-            let nick_name = e.sender.nickname.clone();
-            let res = group_chat(group_id, &prompt, &nick_name).await;
-            if let Ok(res) = res {
-                e.reply(&res).await?;
-            } else {
-                error!(target:"funbot","对话失败：{:?}", res);
-                e.reply("哎呀，bot又犯糊涂了~ (｡•́︿•̀｡)\n请您再试一次或者联系管理员哦！")
-                    .await?;
-            }
-            return Ok(());
-        }
-        let msg = e.msg().to_string();
-        if msg.starts_with("/gpt") {
-            let args = msg.trim_start_matches("/gpt").trim();
-            if args == "reset" {
-                let res = group_chat_reset(e.group_id).await;
-                if res.is_ok() {
-                    e.reply(
-                        "已经帮您重置了对话记录和system prompt啦！现在我们可以开始全新的对话啦!",
-                    )
-                    .await?;
-                } else {
-                    e.reply(
-                        "重置失败了呢~ (´；ω；｀) 您可以稍后再试一次，或者联系管理员寻求帮助哦！",
-                    )
-                    .await?;
-                }
-            } else if args.starts_with("role") {
-                let prompt = args.trim_start_matches("role").trim();
-                let res = group_chat_update_system(e.group_id, prompt).await;
-                if res.is_ok() {
-                    e.reply("system prompt已经更新完毕(≧◡≦)").await?;
-                } else {
-                    group_chat_update_in_use(e.group_id, false).await?;
-                    e.reply("更新失败啦，请您耐心等待片刻后再试试吧~ (๑•́ ₃ •̀๑)")
-                        .await?;
-                }
-            } else {
-                return Ok(());
-            }
-        }
-    }
-
-    Ok(())
-}
 async fn gpt3(
     history: &mut Vec<Chat>,
     prompt: &str,
@@ -503,7 +501,7 @@ async fn group_chat(group_id: i64, msg: &str, nick_name: &str) -> anyhow::Result
 async fn check(history: &mut Vec<Chat>, system: &str) -> anyhow::Result<()> {
     let tokens = get_token("gpt-3.5-turbo", history)?;
     info!(target:"funbot","History token count:{}", 4097-tokens);
-    if tokens >0 {
+    if tokens > 0 {
         return Ok(());
     }
 
@@ -512,12 +510,13 @@ async fn check(history: &mut Vec<Chat>, system: &str) -> anyhow::Result<()> {
         content: "Please provide me with a concise summary of 
         the conversation so that we can continue our longer discussion.
         Ensure that your summary includes key information and important questions
-        so that we can use them in our subsequent discussions.".to_string(),
+        so that we can use them in our subsequent discussions."
+            .to_string(),
         name: None,
     });
-    loop{
-        let token=get_token("gpt-3.5-turbo", history)?;
-        if token>0{
+    loop {
+        let token = get_token("gpt-3.5-turbo", history)?;
+        if token > 0 {
             break;
         }
         history.remove(1);

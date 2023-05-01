@@ -2,7 +2,6 @@ use image::{self, GenericImageView};
 use imageproc::drawing;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::{self, Regex};
-use reqwest;
 use rustqq::client;
 use rustqq::client::message::RowMessage;
 use rustqq::event::events::Event;
@@ -101,7 +100,7 @@ async fn get_pic(
             *p = avg_color;
         }
     });
-    let font_data = include_bytes!("../../fonts/mergefonts.ttf");
+    let font_data = include_bytes!("../fonts/mergefonts.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
     let scale = Scale { x: 45.0, y: 45.0 };
     let font_color = {

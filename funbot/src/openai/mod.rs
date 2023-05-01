@@ -1,5 +1,4 @@
-#[allow(clippy::module_inception)]
-pub mod openai;
-pub use openai::*;
+pub mod chatgpt;
+pub use chatgpt::*;
 pub mod huggingface;
 pub use huggingface::*;
