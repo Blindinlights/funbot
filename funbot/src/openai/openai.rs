@@ -147,7 +147,7 @@ async fn priv_chat_update_history(user_id: i64, history: &str) -> anyhow::Result
     Ok(())
 }
 async fn priv_chat_update_system(user_id: i64, system: &str) -> anyhow::Result<()> {
-    priv_chat_reset(user_id).await?; 
+    priv_chat_reset(user_id).await?;
     let pool = get_pgpool().await?;
     sqlx::query!(
         "UPDATE private_chat SET system = $2 WHERE user_id = $1",
@@ -368,7 +368,6 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
             let msg = e.msg();
             let res = private_chat(user_id, msg).await;
             if let Ok(res) = res {
-                info!(target:"funbot","bot:{:?}", res);
                 e.reply(&res).await?;
             } else {
                 error!(target:"funbot","对话失败：{:?}", res);
@@ -389,7 +388,6 @@ async fn gpt_group(event: &Event, config: &Config) -> Result<(), HandlerError> {
             let nick_name = e.sender.nickname.clone();
             let res = group_chat(group_id, &prompt, &nick_name).await;
             if let Ok(res) = res {
-                info!(target:"funbot","bot:{:?}", res);
                 e.reply(&res).await?;
             } else {
                 error!(target:"funbot","对话失败：{:?}", res);
@@ -456,16 +454,14 @@ async fn gpt3(
         .model("gpt-3.5-turbo")
         .messages(history.clone())
         .build()?;
-    let response = async_openai::Client::new()
-        .chat()
-        .create(arg)
-        .await?
-        .choices[0]
-        .message
-        .content
-        .clone();
+    let response = async_openai::Client::new().chat().create(arg).await?;
+    let usage = response.usage.unwrap();
+    let (pt, ct) = (usage.prompt_tokens, usage.completion_tokens);
 
-    Ok(response)
+    let res = response.choices[0].message.content.clone();
+    info!(target:"dunbot","GPT response:{}",res);
+    info!(target:"funbot","Usage:{} prompt and {} completion",pt,ct);
+    Ok(res)
 }
 async fn private_chat(user_id: i64, msg: &str) -> anyhow::Result<String> {
     priv_chat_init(user_id).await?;
@@ -506,14 +502,26 @@ async fn group_chat(group_id: i64, msg: &str, nick_name: &str) -> anyhow::Result
 
 async fn check(history: &mut Vec<Chat>, system: &str) -> anyhow::Result<()> {
     let tokens = get_token("gpt-3.5-turbo", history)?;
-    if tokens < 4096 {
+    info!(target:"funbot","History token count:{}", 4097-tokens);
+    if tokens >0 {
         return Ok(());
     }
+
     history.push(Chat {
         role: Role::User,
-        content: "Please provide me with a concise summary of the conversation so that we can continue our longer discussion.Ensure that your summary includes key information and important questions so that we can use them in our subsequent discussions. Thank you.".to_string(),
+        content: "Please provide me with a concise summary of 
+        the conversation so that we can continue our longer discussion.
+        Ensure that your summary includes key information and important questions
+        so that we can use them in our subsequent discussions.".to_string(),
         name: None,
     });
+    loop{
+        let token=get_token("gpt-3.5-turbo", history)?;
+        if token>0{
+            break;
+        }
+        history.remove(1);
+    }
     let reqest = CreateChatArgs::default()
         .model("gpt-3.5-turbo")
         .messages(history.clone())

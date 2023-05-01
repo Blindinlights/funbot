@@ -26,5 +26,5 @@ colored = "2.0.0"
 thiserror = "1.0.26"
 sqlx = { version = "0.6.3", features = ["postgres","macros","runtime-actix-native-tls","offline"] }
 async-openai = "0.10.3"
-fern="0.6.0"
+fern={version="0.6.0",features=["colored"]}
 chrono = { version = "0.4.19"}
