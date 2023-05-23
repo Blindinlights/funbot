@@ -8,7 +8,7 @@ mod openai;
 mod quote;
 use echo::{emoji_mix, url_preview};
 use make_it_quote::quote_it;
-use openai::{gpt4, gpt_group, gpt_private, open_journey};
+use openai::{gpt4, gpt_group, gpt_private, open_journey,audio_gpt};
 use quote::bing_pic;
 #[actix_web::main]
 async fn main() {
@@ -21,7 +21,8 @@ async fn main() {
         .event(Box::new(emoji_mix))
         .event(Box::new(gpt_private))
         .event(Box::new(gpt_group))
-        .event(Box::new(gpt4));
+        .event(Box::new(gpt4))
+        .event(Box::new(audio_gpt));
     app.config();
     app.run().await.unwrap();
 }

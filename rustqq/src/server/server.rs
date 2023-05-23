@@ -30,6 +30,7 @@ async fn index(data: String, handler: web::Data<app::App>) -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }
 pub async fn build_server(app: app::App) -> Result<(), Box<dyn std::error::Error>> {
+    
     let ip = ("127.0.0.1", 8755);
     HttpServer::new(move || {
         App::new()

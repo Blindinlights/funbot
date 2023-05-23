@@ -3,6 +3,7 @@ use async_openai::types::{
     ChatCompletionRequestMessage as Chat, CreateChatCompletionRequestArgs as CreateChatArgs, Role,
 };
 use log::debug;
+use regex::Regex;
 use reqwest;
 use rustqq::{
     client::message::RowMessage,
@@ -11,8 +12,10 @@ use rustqq::{
 };
 use serde_json::{json, Value};
 use sqlx::{self, PgPool};
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 use tiktoken_rs::async_openai::get_chat_completion_max_tokens as get_token;
+
+use super::tts;
 #[allow(unused)]
 type HandlerError = Box<dyn std::error::Error>;
 async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
@@ -21,7 +24,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
     map.insert("prompt", prompt);
     map.insert("size", "256x256");
     let res = build_openai(url).json(&map).send().await?.text().await?;
-    let v: Value = serde_json::from_str(&res)?;
+    let v: Value = argfrom_str(&res)?;
     let image_url = v["data"][0]["url"].as_str().unwrap();
     Ok(image_url.to_string())
 }
@@ -72,8 +75,11 @@ pub async fn gpt4(event: &Event, config: &Config) -> Result<(), HandlerError> {
 #[handler]
 pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerError> {
     if let Event::PrivateMessage(ref e) = event {
+        let user_id = e.user_id;
+        if e.message.starts_with("[CQ:") {
+            return Ok(());
+        }
         if e.start_with("/gpt") {
-            let user_id = e.user_id;
             let args = e.msg().trim_start_matches("/gpt").trim();
             if args == "reset" {
                 let res = priv_chat_reset(user_id).await;
@@ -97,6 +103,13 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
                     e.reply("更新失败啦，请您耐心等待片刻后再试试吧~ (๑•́ ₃ •̀๑)")
                         .await?;
                 }
+            } else if args.starts_with("voice") {
+                let prompt = args.trim_start_matches("voice").trim();
+                let res = private_chat(user_id, prompt).await?;
+                let voice = tts::text_to_speech(res.as_str()).await?;
+                let file = voice.to_str().unwrap();
+                let msg = format!("[CQ:record,url=file://{}]", &file);
+                e.reply(msg.as_str()).await?;
             } else {
                 return Ok(());
             }
@@ -163,6 +176,30 @@ async fn gpt_group(event: &Event, config: &Config) -> Result<(), HandlerError> {
                 return Ok(());
             }
         }
+    }
+
+    Ok(())
+}
+#[handler]
+pub async fn audio_gpt(event: &Event, config: &Config) -> Result<(), HandlerError> {
+    if let Event::PrivateMessage(ref e) = event {
+        let re = Regex::new(r"\[CQ:record,file=(.*?),url=.*\]").unwrap();
+        if !re.is_match(e.msg()) {
+            return Ok(());
+        }
+        let file_name = std::env::var("CQ_DATA").expect("CQ_DATA not set")
+            + "/voices/"
+            + re.captures(e.msg()).unwrap().get(1).unwrap().as_str();
+        info!(target:"funbot","audio_gpt: {:?}", file_name);
+        let input_path = PathBuf::from(&file_name);
+        let output_path = input_path.with_extension("wav");
+        tts::convert_audio_format(&input_path, &output_path)?;
+        let prompt = tts::transcribe_audio(&output_path).await?;
+        let res = private_chat(e.user_id, &prompt).await?;
+        let audio = tts::text_to_speech(&res).await?;
+        let file_name = audio.file_name().unwrap().to_str().unwrap();
+        let msg = format!("[CQ:record,file=,url=file://{file_name}]");
+        e.reply(&msg).await?;
     }
 
     Ok(())
@@ -432,7 +469,7 @@ async fn gpt3(
     history: &mut Vec<Chat>,
     prompt: &str,
     system: &str,
-    nick_name: Option<String>,
+    _nick_name: Option<String>,
 ) -> anyhow::Result<String> {
     let system = system.to_string();
     if history.is_empty() {
@@ -445,9 +482,9 @@ async fn gpt3(
     history.push(Chat {
         role: Role::User,
         content: prompt.to_string(),
-        name: nick_name,
+        name: None,
     });
-    check(history, &system).await?;
+    check(history).await?;
     let arg = CreateChatArgs::default()
         .model("gpt-3.5-turbo")
         .messages(history.clone())
@@ -457,7 +494,7 @@ async fn gpt3(
     let (pt, ct) = (usage.prompt_tokens, usage.completion_tokens);
 
     let res = response.choices[0].message.content.clone();
-    info!(target:"dunbot","GPT response:{}",res);
+    info!(target:"funbot","GPT response:{}",res);
     info!(target:"funbot","Usage:{} prompt and {} completion",pt,ct);
     Ok(res)
 }
@@ -498,22 +535,13 @@ async fn group_chat(group_id: i64, msg: &str, nick_name: &str) -> anyhow::Result
     Ok(res)
 }
 
-async fn check(history: &mut Vec<Chat>, system: &str) -> anyhow::Result<()> {
+async fn check(history: &mut Vec<Chat>) -> anyhow::Result<()> {
     let tokens = get_token("gpt-3.5-turbo", history)?;
     info!(target:"funbot","History token count:{}", 4097-tokens);
     if tokens > 0 {
         return Ok(());
     }
 
-    history.push(Chat {
-        role: Role::User,
-        content: "Please provide me with a concise summary of 
-        the conversation so that we can continue our longer discussion.
-        Ensure that your summary includes key information and important questions
-        so that we can use them in our subsequent discussions."
-            .to_string(),
-        name: None,
-    });
     loop {
         let token = get_token("gpt-3.5-turbo", history)?;
         if token > 0 {
@@ -521,21 +549,5 @@ async fn check(history: &mut Vec<Chat>, system: &str) -> anyhow::Result<()> {
         }
         history.remove(1);
     }
-    let reqest = CreateChatArgs::default()
-        .model("gpt-3.5-turbo")
-        .messages(history.clone())
-        .build()?;
-    let client = async_openai::Client::new();
-    let res = client.chat().create(reqest).await?;
-    let res = res.choices[0].message.content.clone();
-    let system = format!("{} 这是之前的对话总结{}", system, res);
-
-    let system = Chat {
-        role: Role::Assistant,
-        content: system,
-        name: None,
-    };
-    history.clear();
-    history.push(system);
     Ok(())
 }

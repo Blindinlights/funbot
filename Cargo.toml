@@ -2,5 +2,6 @@
 members=["rustqq","codegen","funbot"]
 [profile.release]
 opt-level="s"
-
+lto=true
+#strip=true
 

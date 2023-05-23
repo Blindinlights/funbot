@@ -16,7 +16,6 @@ macro_rules! make_event{
         ),*$(,)+
     }
     ) => {
-
             $(#[$meta])*
             #[derive(serde::Serialize,serde::Deserialize,Debug,Clone)]
             pub struct $struct_name{
@@ -30,7 +29,6 @@ macro_rules! make_event{
             }
     }
 }
-
 macro_rules! make_msg_event{
     (
      $(#[$meta:meta])*
