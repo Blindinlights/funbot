@@ -24,7 +24,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
     map.insert("prompt", prompt);
     map.insert("size", "256x256");
     let res = build_openai(url).json(&map).send().await?.text().await?;
-    let v: Value = argfrom_str(&res)?;
+    let v: Value = serde_json::from_str(&res)?;
     let image_url = v["data"][0]["url"].as_str().unwrap();
     Ok(image_url.to_string())
 }
@@ -79,6 +79,7 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
         if e.message.starts_with("[CQ:") {
             return Ok(());
         }
+
         if e.start_with("/gpt") {
             let args = e.msg().trim_start_matches("/gpt").trim();
             if args == "reset" {
@@ -114,6 +115,9 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
                 return Ok(());
             }
         } else {
+            if e.message.trim().starts_with("/") {
+                return Ok(());
+            }
             let user_id = e.user_id;
             let msg = e.msg();
             let res = private_chat(user_id, msg).await;
