@@ -65,41 +65,46 @@ async fn get_pic(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let url = format!("http://q1.qlogo.cn/g?b=qq&nk={id}&s=640");
     let nick_name = format!("--{nick_name}");
-    let resp = reqwest::get(&url).await?;
-    let buf = resp.bytes().await?.to_vec();
-    let img = image::load_from_memory(&buf)?;
-    let mut avg_color = img.pixels().map(|p| p.2).fold((0, 0, 0), |(r, g, b), p| {
-        (r + p[0] as u32, g + p[1] as u32, b + p[2] as u32)
-    });
+    let buf = reqwest::get(&url).await?.bytes().await?.to_vec();
+    let avatar = image::load_from_memory(&buf)?;
+    let mut avg_color = avatar
+        .pixels()
+        .map(|p| p.2)
+        .fold((0, 0, 0), |(r, g, b), p| {
+            (r + p[0] as u32, g + p[1] as u32, b + p[2] as u32)
+        });
     avg_color = (
-        avg_color.0 / (img.width() * img.height()),
-        avg_color.1 / (img.width() * img.height()),
-        avg_color.2 / (img.width() * img.height()),
+        avg_color.0 / (avatar.width() * avatar.height()),
+        avg_color.1 / (avatar.width() * avatar.height()),
+        avg_color.2 / (avatar.width() * avatar.height()),
     );
 
     let mut canvas = image::RgbaImage::new(1280, 640);
 
-    for (x, y, p) in img.pixels() {
+    for (x, y, p) in avatar.pixels() {
         let mut n = image::Rgba([p[0], p[1], p[2], p[3]]);
         let y_rate = 0.;
         let start_pix = (320. + 320. * y_rate) as u32;
         if x > start_pix {
-            let rate = ((x - start_pix) as f32 / (640 - start_pix) as f32)
-                .powi(5)
-                .sqrt()
-                .sqrt();
-            n[0] = ((p[0] as f32 * (1. - rate)) as u32 + (avg_color.0 as f32 * rate) as u32) as u8;
-            n[1] = ((p[1] as f32 * (1. - rate)) as u32 + (avg_color.1 as f32 * rate) as u32) as u8;
-            n[2] = ((p[2] as f32 * (1. - rate)) as u32 + (avg_color.2 as f32 * rate) as u32) as u8;
+            let rate = (x - start_pix) as f32 / (640 - start_pix) as f32;
+            let rate = 1. / (1. + 1f32.exp().powf(-7.5 * (rate - 0.5)));
+
+            let r = ((p[0] as f32 * (1. - rate)) as u32 + (avg_color.0 as f32 * rate) as u32) as u8;
+            let g = ((p[1] as f32 * (1. - rate)) as u32 + (avg_color.1 as f32 * rate) as u32) as u8;
+            let b = ((p[2] as f32 * (1. - rate)) as u32 + (avg_color.2 as f32 * rate) as u32) as u8;
+            let a = ((p[3] as f32 * (1. - rate)) as u32 + (255. as f32 * rate) as u32) as u8;
+            n = image::Rgba([r, g, b, a]);
         }
         canvas.put_pixel(x, y, n);
     }
     let avg_color = image::Rgba([avg_color.0 as u8, avg_color.1 as u8, avg_color.2 as u8, 255]);
-    canvas.pixels_mut().enumerate().for_each(|(i, p)| {
-        if i % 1280 >= 640 {
-            *p = avg_color;
-        }
-    });
+    
+    canvas
+        .pixels_mut()
+        .enumerate()
+        .filter(|(i, _)| i % 1280 >= 640)
+        .for_each(|(_, p)| *p = avg_color);
+
     let font_data = include_bytes!("../fonts/mergefonts.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
     let scale = Scale { x: 45.0, y: 45.0 };
@@ -165,4 +170,16 @@ async fn get_pic(
     );
     canvas.save(file_name)?;
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn test_pic() {
+        let id = 1057584970;
+        let msg = "Hello world";
+        let nick_name = "test";
+        let file_name = "test.png";
+        get_pic(id, msg, nick_name, file_name).await.unwrap();
+    }
 }
