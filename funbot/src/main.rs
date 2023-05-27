@@ -9,10 +9,15 @@ mod quote;
 use echo::{emoji_mix, url_preview};
 use make_it_quote::quote_it;
 use openai::{audio_gpt, gpt4, gpt_group, gpt_private, open_image, open_journey};
+use openai::daily::daily;
 use quote::bing_pic;
 #[actix_web::main]
 async fn main() {
+    info!("Bot start");
     setup_logger().unwrap();
+    let _jobs=rustqq::app::AsyncJobScheduler::new()
+        .add_job(daily());
+    
     let mut app = app::App::new()
         .event(Box::new(bing_pic))
         .event(Box::new(url_preview))
@@ -25,61 +30,28 @@ async fn main() {
         .event(Box::new(open_image))
         .event(Box::new(audio_gpt));
     app.config();
+    //jobs.run().await;
     app.run().await.unwrap();
+    
 }
 fn setup_logger() -> Result<(), fern::InitError> {
-    let log_file = fern::log_file("log.txt")?;
+    let today=chrono::Local::now().format("%Y-%m-%d").to_string();
+    let date=fern::DateBased::new("log/",today);
+    let log_file = fern::Dispatch::new().chain(date);
 
     fern::Dispatch::new()
         .level(log::LevelFilter::Info)
-        .chain(
-            fern::Dispatch::new()
-                .level(log::LevelFilter::Info)
-                .filter(|metadata| metadata.target() != "sqlx::query")
-                .chain(std::io::stdout())
-                .format(|out, msg, record| {
-                    let colors = fern::colors::ColoredLevelConfig::new()
-                        .info(fern::colors::Color::Green)
-                        .debug(fern::colors::Color::Magenta)
-                        .error(fern::colors::Color::Red)
-                        .warn(fern::colors::Color::Yellow);
-                    if msg.to_string().chars().count() < 60 {
-                        out.finish(format_args!(
-                            "{} {} {}",
-                            chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                            colors.color(record.level()),
-                            msg.to_string().replace('\n', "")
-                        ))
-                    } else {
-                        let msg = msg
-                            .to_string()
-                            .chars()
-                            .take(60)
-                            .collect::<String>()
-                            .replace('\n', "");
-                        out.finish(format_args!(
-                            "{} {} {}...",
-                            chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                            colors.color(record.level()),
-                            msg
-                        ))
-                    }
-                }),
-        )
-        .chain(
-            fern::Dispatch::new()
-                .level(log::LevelFilter::Info)
-                .filter(|metedata| metedata.target() != "sqlx::query")
-                .chain(log_file)
-                .format(|out, message, record| {
-                    out.finish(format_args!(
-                        "{} [{}] {}",
-                        chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                        record.level(),
-                        message
-                    ))
-                }),
-        )
+        .filter(|metedata| metedata.target() != "sqlx::query")
+        .chain(log_file)
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "{} {} [{}] {}",
+                record.target(),
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                record.level(),
+                message
+            ))
+        })
         .apply()?;
     Ok(())
 }

@@ -4,3 +4,5 @@ Cargo.lock
 *.py
 *.env
 target
+scp.sh
+images/

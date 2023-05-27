@@ -6,7 +6,7 @@ use rustqq::{
     handler,
 };
 use std::{io::Write, path};
-struct HuggingFace {
+pub struct HuggingFace {
     api_key: String,
     url: String,
 }
@@ -14,7 +14,7 @@ impl HuggingFace {
     pub fn new(api_key: String, url: String) -> Self {
         Self { api_key, url }
     }
-    async fn generate_image(
+    pub async fn generate_image(
         &self,
         prompt: &str,
         file_name: String,
@@ -32,7 +32,7 @@ impl HuggingFace {
         let res = client
             .post(url)
             .header("Content-Type", "application/json")
-            .header("Authorization", self.api_key.as_str())
+            .bearer_auth(self.api_key.as_str())
             .json(&data)
             .send()
             .await?
@@ -46,8 +46,17 @@ impl HuggingFace {
         let api_key = std::env::var("HUGGINGFACE_API_KEY").unwrap();
 
         HuggingFace::new(
-            format!("Bearer {api_key}"),
+            api_key,
             "https://api-inference.huggingface.co/models/prompthero/openjourney".to_string(),
+        )
+    }
+    #[allow(dead_code)]
+    pub fn sd_2_1()->Self{
+        let api_key = std::env::var("HUGGINGFACE_API_KEY").unwrap();
+
+        HuggingFace::new(
+            api_key,
+            "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1".to_string(),
         )
     }
 }
