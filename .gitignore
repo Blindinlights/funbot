@@ -1,3 +1,4 @@
+Cargo.lock
 /rustqq/target
 /codegen/target
 *.lock
@@ -6,4 +7,3 @@
 target
 scp.sh
 images/
-Cargo.lock
