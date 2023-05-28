@@ -300,7 +300,6 @@ async fn group_chat_update_system(group_id: i64, system: &str) -> anyhow::Result
 }
 async fn get_private_history(user_id: i64) -> anyhow::Result<Vec<Chat>> {
     let pool = get_pgpool().await?;
-    sqlx::query!("BEGIN;",).execute(&pool).await?;
     let res = sqlx::query!(
         "SELECT history FROM private_chat WHERE user_id = $1",
         user_id
@@ -328,7 +327,6 @@ async fn get_private_system(user_id: i64) -> anyhow::Result<String> {
 }
 async fn get_group_history(group_id: i64) -> anyhow::Result<Vec<Chat>> {
     let pool = get_pgpool().await?;
-    sqlx::query!("BEGIN;",).execute(&pool).await?;
     let res = sqlx::query!(
         "SELECT history FROM group_chat WHERE group_id = $1",
         group_id
