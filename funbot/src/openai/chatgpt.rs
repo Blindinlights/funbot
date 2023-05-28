@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use sqlx::{self, PgPool};
 use std::{collections::HashMap, path::PathBuf};
 use tiktoken_rs::async_openai::get_chat_completion_max_tokens as get_token;
-
+pub const API_BASE: &str = "https://openai.clinkz.top/v1";
 use super::tts;
 #[allow(unused)]
 type HandlerError = Box<dyn std::error::Error>;
@@ -74,6 +74,7 @@ pub async fn gpt4(event: &Event, config: &Config) -> Result<(), HandlerError> {
 }
 #[handler]
 pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerError> {
+    info!("gpt_private");
     if let Event::PrivateMessage(ref e) = event {
         let user_id = e.user_id;
         if e.message.starts_with("[CQ:") {
@@ -118,10 +119,13 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
             if e.message.trim().starts_with('/') {
                 return Ok(());
             }
+            info!(target:"funbot","{} ({}) 对ChatGPT说：{}", e.sender.nickname, e.user_id, e.msg());
             let user_id = e.user_id;
             let msg = e.msg();
             let res = private_chat(user_id, msg).await;
+
             if let Ok(res) = res {
+                info!(target:"funbot","ChatGPT回复：{}", res);
                 e.reply(&res).await?;
             } else {
                 error!(target:"funbot","对话失败：{:?}", res);
@@ -210,7 +214,7 @@ pub async fn audio_gpt(event: &Event, config: &Config) -> Result<(), HandlerErro
 }
 
 async fn gpt_4_chat(msg: &str) -> anyhow::Result<String> {
-    let url = "https://api.openai.com/v1/chat/completions";
+    let url = "https://openai.clinkz.top/v1/chat/completions";
     let sys = Chat {
         role: Role::System,
         content: "you are a useful assistant.".to_string(),
@@ -260,6 +264,7 @@ async fn priv_chat_init(user_id: i64) -> anyhow::Result<()> {
 }
 async fn priv_chat_reset(user_id: i64) -> anyhow::Result<()> {
     let pool = get_pgpool().await?;
+    sqlx::query!("COMMIT;",).execute(&pool).await?;
     sqlx::query!(
         "UPDATE private_chat SET system = $2, history = $3,in_use = $4 WHERE user_id = $1",
         user_id,
@@ -280,6 +285,7 @@ async fn priv_chat_update_history(user_id: i64, history: &str) -> anyhow::Result
     )
     .execute(&pool)
     .await?;
+    sqlx::query!("COMMIT;",).execute(&pool).await?;
     Ok(())
 }
 async fn priv_chat_update_system(user_id: i64, system: &str) -> anyhow::Result<()> {
@@ -325,6 +331,7 @@ async fn group_chat_init(group_id: i64) -> anyhow::Result<()> {
 }
 async fn group_chat_reset(group_id: i64) -> anyhow::Result<()> {
     let pool = get_pgpool().await?;
+    sqlx::query!("COMMIT;",).execute(&pool).await?;
     sqlx::query!(
         "UPDATE group_chat SET system = $2, history = $3,in_use = $4 WHERE group_id = $1",
         group_id,
@@ -339,12 +346,13 @@ async fn group_chat_reset(group_id: i64) -> anyhow::Result<()> {
 async fn group_chat_update_history(group_id: i64, history: &str) -> anyhow::Result<()> {
     let pool = get_pgpool().await?;
     sqlx::query!(
-        "UPDATE group_chat SET history = $2 WHERE group_id = $1",
+        "UPDATE group_chat SET history = $2 WHERE group_id = $1;",
         group_id,
         history
     )
     .execute(&pool)
     .await?;
+    sqlx::query!("COMMIT;",).execute(&pool).await?;
     Ok(())
 }
 async fn group_chat_update_system(group_id: i64, system: &str) -> anyhow::Result<()> {
@@ -372,21 +380,11 @@ async fn group_chat_update_in_use(group_id: i64, in_use: bool) -> anyhow::Result
 }
 async fn get_private_history(user_id: i64) -> anyhow::Result<Vec<Chat>> {
     let pool = get_pgpool().await?;
-    loop {
-        let in_used = sqlx::query!(
-            "SELECT in_use FROM private_chat WHERE user_id = $1",
-            user_id
-        )
-        .fetch_one(&pool)
-        .await?;
-        if !in_used.in_use {
-            break;
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-    }
-
+    sqlx::query!(
+        "BEGIN;",
+    ).execute(&pool).await?;
     let res = sqlx::query!(
-        "SELECT history FROM private_chat WHERE user_id = $1",
+        "SELECT history FROM private_chat WHERE user_id = $1 FOR UPDATE",
         user_id
     )
     .fetch_one(&pool)
@@ -402,7 +400,7 @@ async fn get_private_history(user_id: i64) -> anyhow::Result<Vec<Chat>> {
 async fn get_private_system(user_id: i64) -> anyhow::Result<String> {
     let pool = get_pgpool().await?;
     let res = sqlx::query!(
-        "SELECT system FROM private_chat WHERE user_id = $1",
+        "SELECT system FROM private_chat WHERE user_id = $1 ",
         user_id
     )
     .fetch_one(&pool)
@@ -412,20 +410,11 @@ async fn get_private_system(user_id: i64) -> anyhow::Result<String> {
 }
 async fn get_group_history(group_id: i64) -> anyhow::Result<Vec<Chat>> {
     let pool = get_pgpool().await?;
-    loop {
-        let in_used = sqlx::query!(
-            "SELECT in_use FROM group_chat WHERE group_id = $1",
-            group_id
-        )
-        .fetch_one(&pool)
-        .await?;
-        if !in_used.in_use {
-            break;
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-    }
+    sqlx::query!(
+        "BEGIN;",
+    ).execute(&pool).await?;
     let res = sqlx::query!(
-        "SELECT history FROM group_chat WHERE group_id = $1",
+        "SELECT history FROM group_chat WHERE group_id = $1 FOR UPDATE",
         group_id
     )
     .fetch_one(&pool)
@@ -493,48 +482,42 @@ async fn gpt3(
         .model("gpt-3.5-turbo")
         .messages(history.clone())
         .build()?;
-    let response = async_openai::Client::new().chat().create(arg).await?;
+    let response = async_openai::Client::new()
+        .with_api_base(API_BASE)
+        .chat()
+        .create(arg)
+        .await?;
     let usage = response.usage.unwrap();
     let (pt, ct) = (usage.prompt_tokens, usage.completion_tokens);
 
     let res = response.choices[0].message.content.clone();
-    info!(target:"funbot","GPT response:{}",res);
     info!(target:"funbot","Usage:{} prompt and {} completion",pt,ct);
-    Ok(res)
-}
-async fn private_chat(user_id: i64, msg: &str) -> anyhow::Result<String> {
-    priv_chat_init(user_id).await?;
-    let mut history = get_private_history(user_id).await?;
-    let system = get_private_system(user_id).await?;
-    priv_chat_update_in_use(user_id, true).await?;
-    let res = gpt3(&mut history, msg, &system, None).await?;
     history.push(Chat {
         role: Role::Assistant,
         content: res.clone(),
         name: None,
     });
+    Ok(res)
+}
+async fn private_chat(user_id: i64, msg: &str) -> anyhow::Result<String> {
+    priv_chat_init(user_id).await?;
+    let mut history: Vec<Chat> = get_private_history(user_id).await?;
+    let system = get_private_system(user_id).await?;
+    let res = gpt3(&mut history, msg, &system, None).await;
     let prompt = serde_json::to_string(&history)?;
-
     priv_chat_update_history(user_id, &prompt).await?;
-    priv_chat_update_in_use(user_id, false).await?;
-
+    let res = res?;
     Ok(res)
 }
 async fn group_chat(group_id: i64, msg: &str, nick_name: &str) -> anyhow::Result<String> {
     group_chat_init(group_id).await?;
     let mut history = get_group_history(group_id).await?;
-    group_chat_update_in_use(group_id, true).await?;
     let system = get_group_system(group_id).await?;
-    let res = gpt3(&mut history, msg, &system, Some(nick_name.to_string())).await?;
-    history.push(Chat {
-        role: Role::Assistant,
-        content: res.clone(),
-        name: None,
-    });
+    let res = gpt3(&mut history, msg, &system, Some(nick_name.to_string())).await;
     let prompt = serde_json::to_string(&history)?;
 
     group_chat_update_history(group_id, &prompt).await?;
-    group_chat_update_in_use(group_id, false).await?;
+    let res = res?;
 
     Ok(res)
 }
