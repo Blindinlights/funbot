@@ -6,3 +6,4 @@
 target
 scp.sh
 images/
+Cargo.lock
