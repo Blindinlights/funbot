@@ -2,8 +2,8 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use reqwest;
 use rustqq::{
     client::message::RowMessage,
-    event::{Event, Meassages, Reply},
-    handler,
+    command,
+    event::{Meassages, Reply}
 };
 use std::{io::Write, path};
 pub struct HuggingFace {
@@ -51,12 +51,13 @@ impl HuggingFace {
         )
     }
     #[allow(dead_code)]
-    pub fn sd_2_1()->Self{
+    pub fn sd_2_1() -> Self {
         let api_key = std::env::var("HUGGINGFACE_API_KEY").unwrap();
 
         HuggingFace::new(
             api_key,
-            "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1".to_string(),
+            "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+                .to_string(),
         )
     }
 }
@@ -88,23 +89,13 @@ async fn reply_msg(
     let path = path.replace("file://", "");
     Ok((raw_msg.get_msg().to_string(), path))
 }
-#[handler]
-async fn open_journey(event: Event) -> Result<(), std::error::Error> {
-    if let Event::GroupMessage(ref msg) = event {
-        if msg.start_with("/journey") {
-            let prompt = msg.message.replace("/journey", "");
-            let (reply_msg, path) = reply_msg(prompt, msg.message_id).await?;
-            msg.reply(&reply_msg).await?;
-            std::fs::remove_file(path)?;
-        }
-    }
-    if let Event::PrivateMessage(ref msg) = event {
-        if msg.start_with("/journey") {
-            let prompt = msg.message.replace("/journey", "");
-            let (reply_msg, path) = reply_msg(prompt, msg.message_id).await?;
-            msg.reply(&reply_msg).await?;
-            std::fs::remove_file(path)?;
-        }
-    }
+#[command(cmd = "/journey", desc = "使用huggingface的openjourney模型生成图片",alias="/openjourney|/oj")]
+async fn open_journey(msg_event: _) -> Result<(), std::error::Error> {
+    info!("openjourney");
+    let prompt = msg_event.msg().replace("/journey", "");
+    let (reply_msg, path) = reply_msg(prompt, msg_event.msg_id()).await?;
+    msg_event.reply(&reply_msg).await?;
+    std::fs::remove_file(path)?;
+
     Ok(())
 }

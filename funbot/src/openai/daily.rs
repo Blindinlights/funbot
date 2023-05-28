@@ -1,4 +1,4 @@
-
+#![allow(dead_code)]
 use rustqq::app::async_job::AsyncJob;
 
 use async_openai::types::{

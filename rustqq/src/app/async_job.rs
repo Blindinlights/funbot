@@ -79,9 +79,9 @@ impl AsyncJobScheduler {
     pub fn new() -> Self {
         self::AsyncJobScheduler::default()
     }
-    pub fn add_job(mut self, job: AsyncJob) -> Self {
+    pub fn add_job(&mut self, job: AsyncJob)  {
         self.jobs.push(job);
-        self
+
     }
     pub fn add_jobs(mut self, jobs: Vec<AsyncJob>) -> Self {
         self.jobs.extend(jobs);
@@ -98,11 +98,11 @@ impl AsyncJobScheduler {
         AsyncSchedulerFuture { futures }
     }
     pub async fn run(mut self) {
-        tokio::spawn(async move {
+
             loop {
                 self.run_pending().await;
             }
-        });
+        
     }
 }
 

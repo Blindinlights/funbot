@@ -1,73 +1,23 @@
 use crate::event::events::*;
 use axum::{routing::post, Router};
 use log::info;
-use serde::Deserialize;
-use std::io::Read;
 use std::net::{Ipv4Addr, SocketAddr};
-use std::{fs::File, sync::Arc};
+use std::sync::Arc;
+
+use super::service::{IntoService, IntoServiceInfo, Service, IntoServices};
+use super::{AsyncJob, AsyncJobScheduler};
 type BoxResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-type EventHandles = Vec<Box<dyn EventHandle + Send + Sync>>;
+type EventHandles = Vec<Box<dyn EventHandler + Send + Sync>>;
 
 pub struct App {
     ip: SocketAddr,
-    pub handler: EventHandles,
-    pub config: Config,
+     handler: EventHandles,
+    pub scheduler: AsyncJobScheduler,
+    services: Vec<Service>
 }
-#[derive(Clone, Default, Deserialize)]
-pub struct Config {
-    plugin: Vec<Plugin>,
-}
-impl Config {
-    pub fn new() -> Self {
-        Self::default()
-    }
-    pub fn load(&mut self) -> &mut Self {
-        //read file plugin.toml
-        let mut file = File::open("plugin.toml").unwrap();
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
-        let _conf: Config = toml::from_str(&contents).unwrap();
-        self
-    }
-    pub fn is_command(&self, msg: &str) -> bool {
-        self.get_command(msg).is_some()
-    }
-    pub fn get_command(&self, msg: &str) -> Option<&Plugin> {
-        self.plugin.iter().find(|x| x.is_match(msg))
-    }
-}
-#[allow(dead_code)]
-#[derive(Default, Clone, Deserialize)]
-pub struct Plugin {
-    commands: Option<Vec<String>>,
-    description: String,
-    name: String,
-    regex: Option<String>,
-    usage: String,
-    options: Option<Vec<String>>,
-}
-impl Plugin {
-    pub fn new() -> Self {
-        Self::default()
-    }
-    pub fn is_match(&self, msg: &str) -> bool {
-        if self.regex.is_none() {
-            false
-        } else {
-            let re = regex::Regex::new(self.regex.as_ref().unwrap()).unwrap();
-            re.is_match(msg)
-        }
-    }
-}
-// unsafe impl Send for App {}
-// unsafe impl Sync for App {}
 #[async_trait::async_trait]
-pub trait EventHandle: Send + Sync {
-    async fn register(
-        &self,
-        event: &Event,
-        data: &Config,
-    ) -> Result<(), Box<dyn std::error::Error>>;
+pub trait EventHandler: Send + Sync {
+    async fn register(&self, event: &Event) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 impl App {
@@ -75,7 +25,8 @@ impl App {
         Self {
             ip: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 8080),
             handler: Vec::new(),
-            config: Config::new(),
+            scheduler: AsyncJobScheduler::new(),
+            services: Vec::new()
         }
     }
 
@@ -83,31 +34,30 @@ impl App {
         self.ip = ip;
         self
     }
-    pub fn event<E: EventHandle + 'static>(mut self, handler: E) -> Self {
+    pub fn event<E: EventHandler + 'static>(mut self, handler: E) -> Self {
         self.handler.push(Box::new(handler));
         self
     }
-    pub async fn handle_event(&self, event: &Event) -> BoxResult<()> {
-        for f in self.handler.iter() {
-            f.register(event, &self.config).await?;
-        }
-        Ok(())
+    pub fn job(&mut self, job: AsyncJob) {
+        self.scheduler.add_job(job);
     }
-    pub fn config(&mut self) {
-        self.config.load();
+    pub fn service<T: IntoServices>(mut self, service: T) -> Self {
+        self.services.extend(service.into_services().0);
+        self
     }
 
     pub async fn run(self) -> BoxResult<()> {
-        let eh = Arc::new(self.handler);
-        let app = Router::new().route("/", post(move |req| index(req, eh)));
-        axum::Server::bind(&self.ip)
-            .serve(app.into_make_service())
-            .await?;
+        info!("Bot start");
+
+        let services=Arc::new(self.services);
+        let app = Router::new().route("/", post(move |req| index(req, services)));
+        let bot = axum::Server::bind(&self.ip).serve(app.into_make_service());
+        let _ = tokio::join!(bot);
         Ok(())
     }
 }
 
-async fn index(req: axum::extract::Json<Event>, handler: Arc<EventHandles>) {
+async fn index(req: axum::extract::Json<Event>, handler: Arc<Vec<Service>>) {
     let event = req.0;
     match &event {
         Event::PrivateMessage(e) => {
@@ -122,12 +72,53 @@ async fn index(req: axum::extract::Json<Event>, handler: Arc<EventHandles>) {
                 e.sender.nickname, e.user_id, e.message
             );
         }
-        _ => return ,
+        _ => return,
     }
 
     for f in handler.iter() {
-        f.register(&event, &Config::new()).await.map_err(|e| {
-            log::error!("处理事件失败: {:?}", e);
-        }).ok();
+        f.handler.register(&event).await.ok().unwrap();
+    }
+}
+#[async_trait::async_trait]
+pub trait Command: IntoService {
+    async fn proc(&self, msg: MsgEvent) -> BoxResult<()>;
+}
+#[async_trait::async_trait]
+impl<T> EventHandler for T
+where
+    T: Command + Send + Sync+IntoServiceInfo,
+{
+    async fn register(&self, event: &Event) -> Result<(), Box<dyn std::error::Error>> {
+        let info=self.into_service_info();
+        let mut cmds=info.command.clone();
+        if !info.alias.is_empty(){
+            cmds.push_str("|");
+            cmds.push_str(info.alias.as_str());
+        }
+        let cmds=cmds.split("|").collect::<Vec<_>>();
+        let pre=|s:&str|{
+            
+            for cmd in cmds.iter(){
+                if s.starts_with(cmd){
+                    return true;
+                }
+            }
+            false
+        };
+        match event {
+            Event::PrivateMessage(e) => {
+                if pre(&e.message) {
+                    self.proc(MsgEvent::PrivateMessage(e.clone())).await?;
+                }
+
+            }
+            Event::GroupMessage(e) => {
+                if pre(&e.message) {
+                    self.proc(MsgEvent::GroupMessage(e.clone())).await?;
+                }
+            }
+            _ => return Ok(()),
+        }
+        Ok(())
     }
 }

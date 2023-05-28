@@ -1,6 +1,5 @@
 use reqwest::ClientBuilder;
 use rustqq::client::message::RowMessage;
-use rustqq::event::events::Event;
 use rustqq::event::events::Meassages;
 use rustqq::event::reply_trait::Reply;
 use rustqq::event::MsgEvent;

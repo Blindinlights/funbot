@@ -442,6 +442,33 @@ impl MsgEvent {
             _ => None,
         }
     }
+    pub fn msg_id(&self) -> i64 {
+        match self {
+            MsgEvent::PrivateMessage(msg) => msg.message_id,
+            MsgEvent::GroupMessage(msg) => msg.message_id,
+        }
+    }
+    fn is_private(&self) -> bool {
+        match self {
+            MsgEvent::PrivateMessage(_) => true,
+            MsgEvent::GroupMessage(_) => false,
+        }
+    }
+    pub fn is_group(&self) -> bool {
+        !self.is_private()
+    }
+    pub fn group_id(&self) -> Option<i64> {
+        match self {
+            MsgEvent::PrivateMessage(_) => None,
+            MsgEvent::GroupMessage(msg) => Some(msg.group_id),
+        }
+    }
+    pub fn user_id(&self) -> i64 {
+        match self {
+            MsgEvent::PrivateMessage(msg) => msg.user_id,
+            MsgEvent::GroupMessage(msg) => msg.user_id,
+        }
+    }
 }
 impl Meassages for MsgEvent {
     fn start_with(&self, s: &str) -> bool {
