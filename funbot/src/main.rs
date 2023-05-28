@@ -12,7 +12,7 @@ use openai::{audio_gpt, gpt4, gpt_group, gpt_private, open_image, open_journey};
 use quote::bing_pic;
 
 use crate::openai::chat_set;
-#[tokio::main]
+#[actix_web::main]
 async fn main() {
     info!("Bot start");
     setup_logger().unwrap();

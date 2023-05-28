@@ -1,19 +1,19 @@
 use crate::event::events::*;
-use axum::{routing::post, Router};
+use actix_web::{web, Responder};
 use log::info;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
-use super::service::{IntoService, IntoServiceInfo, Service, IntoServices};
+use super::service::{IntoService, IntoServiceInfo, IntoServices, Service};
 use super::{AsyncJob, AsyncJobScheduler};
 type BoxResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 type EventHandles = Vec<Box<dyn EventHandler + Send + Sync>>;
 
 pub struct App {
     ip: SocketAddr,
-     handler: EventHandles,
+    handler: EventHandles,
     pub scheduler: AsyncJobScheduler,
-    services: Vec<Service>
+    services: Vec<Service>,
 }
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync {
@@ -26,7 +26,7 @@ impl App {
             ip: SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 8080),
             handler: Vec::new(),
             scheduler: AsyncJobScheduler::new(),
-            services: Vec::new()
+            services: Vec::new(),
         }
     }
 
@@ -47,17 +47,24 @@ impl App {
     }
 
     pub async fn run(self) -> BoxResult<()> {
-        info!("Bot start");
+        let services = Arc::new(self.services);
+        actix_web::HttpServer::new(move || {
+            actix_web::App::new()
+                .service(web::resource("/").route(web::post().to(index)))
+                .app_data(actix_web::web::Data::new(services.clone()))
+        })
+        .bind(self.ip)?
+        .run()
+        .await?;
 
-        let services=Arc::new(self.services);
-        let app = Router::new().route("/", post(move |req| index(req, services)));
-        let bot = axum::Server::bind(&self.ip).serve(app.into_make_service());
-        let _ = tokio::join!(bot);
         Ok(())
     }
 }
 
-async fn index(req: axum::extract::Json<Event>, handler: Arc<Vec<Service>>) {
+async fn index(
+    req: actix_web::web::Json<Event>,
+    handler: web::Data<Arc<Vec<Service>>>,
+) -> impl Responder {
     let event = req.0;
     match &event {
         Event::PrivateMessage(e) => {
@@ -72,12 +79,13 @@ async fn index(req: axum::extract::Json<Event>, handler: Arc<Vec<Service>>) {
                 e.sender.nickname, e.user_id, e.message
             );
         }
-        _ => return,
+        _ => return "ok",
     }
 
     for f in handler.iter() {
         f.handler.register(&event).await.ok().unwrap();
     }
+    "ok"
 }
 #[async_trait::async_trait]
 pub trait Command: IntoService {
@@ -86,20 +94,19 @@ pub trait Command: IntoService {
 #[async_trait::async_trait]
 impl<T> EventHandler for T
 where
-    T: Command + Send + Sync+IntoServiceInfo,
+    T: Command + Send + Sync + IntoServiceInfo,
 {
     async fn register(&self, event: &Event) -> Result<(), Box<dyn std::error::Error>> {
-        let info=self.into_service_info();
-        let mut cmds=info.command.clone();
-        if !info.alias.is_empty(){
+        let info = self.into_service_info();
+        let mut cmds = info.command.clone();
+        if !info.alias.is_empty() {
             cmds.push_str("|");
             cmds.push_str(info.alias.as_str());
         }
-        let cmds=cmds.split("|").collect::<Vec<_>>();
-        let pre=|s:&str|{
-            
-            for cmd in cmds.iter(){
-                if s.starts_with(cmd){
+        let cmds = cmds.split("|").collect::<Vec<_>>();
+        let pre = |s: &str| {
+            for cmd in cmds.iter() {
+                if s.starts_with(cmd) {
                     return true;
                 }
             }
@@ -110,7 +117,6 @@ where
                 if pre(&e.message) {
                     self.proc(MsgEvent::PrivateMessage(e.clone())).await?;
                 }
-
             }
             Event::GroupMessage(e) => {
                 if pre(&e.message) {

@@ -12,10 +12,10 @@ serde = { version = "1.0.147", features = ["derive"] }
 async-trait="0.1.51"
 codegen={path="../codegen"}
 dyn-clone="1.0.4"
-toml="0.5.8"
 cron="0.12.0"
 chrono="0.4.19"
 uuid={version="1.2.2",features=["v4"]}
 regex="1.5.4"
 log="0.4.17"
 axum = { version = "0.6.18", features = ["tokio"] }
+actix-web = { version = "4.3.1" }

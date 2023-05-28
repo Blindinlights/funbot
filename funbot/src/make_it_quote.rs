@@ -174,7 +174,7 @@ async fn get_pic(
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[tokio::test]
+    #[actix_web::test]
     async fn test_pic() {
         let id = 1057584970;
         let msg = "Hello world";

@@ -7,7 +7,6 @@ use rustqq::handler;
 use std::mem::swap;
 
 use serde_json::Value;
-use tokio::fs;
 
 #[handler]
 async fn echo_msg(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
@@ -155,7 +154,7 @@ async fn get_date(
     left: &mut String,
     right: &mut String,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let data = fs::read_to_string("EmojiData.json").await?;
+    let data = std::fs::read_to_string("EmojiData.json")?;
     let v: Value = serde_json::from_str(&data)?;
     //get every key name
     let map = v.as_object().unwrap();
@@ -195,7 +194,7 @@ async fn get_date(
 #[cfg(test)]
 mod test {
     use super::*;
-    #[tokio::test]
+    #[actix_web::test]
     async fn test_get_date() {
         let (left, right) = ("🥹", "😯");
         let left = left.chars().next().unwrap() as u32;
