@@ -39,7 +39,7 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                     .collect();
                 file_name.push_str(".png");
                 let mut raw_msg = RowMessage::new();
-                //get absolute path
+
                 let mut path = path::PathBuf::from("./");
                 path = path.canonicalize()?;
                 path.push("images/");

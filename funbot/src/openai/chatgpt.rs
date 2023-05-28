@@ -115,7 +115,7 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
                 return Ok(());
             }
         } else {
-            if e.message.trim().starts_with("/") {
+            if e.message.trim().starts_with('/') {
                 return Ok(());
             }
             let user_id = e.user_id;

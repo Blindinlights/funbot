@@ -1,10 +1,47 @@
 extern crate proc_macro;
-use std::{collections::HashMap};
 
 use async_trait::async_trait;
 use codegen::Meassages;
+use serde::{Deserialize, Serialize};
 
 use super::Reply;
+#[derive(Deserialize, Debug, Clone, Serialize, Default)]
+pub enum PostType {
+    Message,
+    Notice,
+    Request,
+    #[serde(rename = "meta_event")]
+    MetaEvent,
+    #[serde(other)]
+    #[default]
+    Other,
+}
+#[derive(Deserialize, Debug, Clone, Serialize, Default)]
+pub enum MessageType {
+    #[serde(rename = "private")]
+    #[default]
+    Private,
+    #[serde(rename = "group")]
+    Group,
+}
+#[derive(Deserialize, Debug, Clone, Serialize, Default)]
+pub enum MsgSubType {
+    #[serde(rename = "friend")]
+    Friend,
+    #[serde(rename = "normal")]
+    Normal,
+    #[serde(rename = "anonymous")]
+    Anonymous,
+    #[serde(rename = "group_self")]
+    GroupSelf,
+    #[serde(rename = "group")]
+    Group,
+    #[serde(rename = "notice")]
+    Notice,
+    #[serde(other)]
+    #[default]
+    Other,
+}
 
 macro_rules! make_event{
     (
@@ -17,9 +54,9 @@ macro_rules! make_event{
     }
     ) => {
             $(#[$meta])*
-            #[derive(serde::Serialize,serde::Deserialize,Debug,Clone)]
+            #[derive(serde::Deserialize,Debug,Clone,serde::Serialize,Default)]
             pub struct $struct_name{
-                pub post_type: String,
+                pub post_type: PostType,
                 pub self_id: i64,
                 pub time: i64,
                 $(
@@ -43,8 +80,8 @@ macro_rules! make_msg_event{
             $(#[$meta])*
             #[derive(Meassages)]
             pub struct $struct_name{
-                message_type:String,
-                sub_type:String,
+                message_type:MessageType,
+                sub_type:MsgSubType,
                 message_id:i64,
                 user_id:i64,
                 message:String,
@@ -85,18 +122,18 @@ macro_rules! make_notice_event {
 
        }
 }
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Sender {
-    age: i32,
+    pub age: i32,
     pub nickname: String,
-    sex: String,
-    user_id: i64,
+    pub sex: String,
+    pub user_id: i64,
 }
 
 make_event! {
     #[derive(Meassages)]
     struct PrivateMessage{
-        message_type:String,
+        message_type:MessageType,
         sub_type:String,
         message_id:i64,
         user_id:i64,
@@ -112,14 +149,14 @@ make_msg_event! {
         anonymous:Option<Anonymous>,
     }
 }
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct FileInfo {
     id: String,
     name: String,
     size: i64,
     busid: i64,
 }
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Anonymous {
     id: i64,
     name: String,
@@ -170,7 +207,7 @@ make_notice_event! {
         user_id:i64,
     }
 }
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct OfflineFile {
     name: String,
     size: i64,
@@ -238,10 +275,11 @@ make_event! {
         interval:i64,
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
 pub enum Event {
-    PrivateMessage(PrivateMessage),
     GroupMessage(GroupMessage),
+    PrivateMessage(PrivateMessage),
     GroupFileUpload(GroupFileUpload),
     GroupAdminChange(GroupAdminChange),
     GroupMemberReduce(GroupMemberReduce),
@@ -258,6 +296,134 @@ pub enum Event {
     OfflineFileUpload(OfflineFileUpload),
     Unknown,
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_json() {
+        let gm = GroupMessage::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+        matches!(de, Event::GroupMessage(_));
+    }
+    #[test]
+    fn test_json2() {
+        let gm = PrivateMessage::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+        matches!(de, Event::PrivateMessage(_));
+    }
+
+    #[test]
+    fn test_json3() {
+        let gm = GroupFileUpload::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+        matches!(de, Event::GroupFileUpload(_));
+    }
+    #[test]
+    fn test_json4() {
+        let gm = GroupAdminChange::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+        matches!(de, Event::GroupAdminChange(_));
+    }
+    #[test]
+    fn test_json5() {
+        let gm = GroupMemberReduce::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+        matches!(de, Event::GroupMemberReduce(_));
+    }
+    #[test]
+    fn test_json6() {
+        let gm = GroupMemberIncrease::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+        matches!(de, Event::GroupMemberIncrease(_));
+    }
+    #[test]
+    fn test_json7() {
+        let gm = GroupMute::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+        matches!(de, Event::GroupMute(_));
+    }
+    #[test]
+    fn test_json8() {
+        let gm = FriendAdd::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+
+        matches!(de, Event::FriendAdd(_));
+    }
+    #[test]
+    fn test_json9() {
+        let gm = GroupMessageRecall::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+
+        matches!(de, Event::GroupMessageRecall(_));
+    }
+    #[test]
+    fn test_json10() {
+        let gm = FriendMessageRecall::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+
+        matches!(de, Event::FriendMessageRecall(_));
+    }
+    #[test]
+    fn test_json11() {
+        let gm = FriendPoke::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+
+        matches!(de, Event::FriendPoke(_));
+    }
+    #[test]
+    fn test_json12() {
+        let gm = GroupPoke::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+
+        matches!(de, Event::GroupPoke(_));
+    }
+    #[test]
+    fn test_json13() {
+        let gm = FriendRequest::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+
+        matches!(de, Event::FriendRequest(_));
+    }
+    #[test]
+    fn test_json14() {
+        let gm = GroupRequest::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+
+        matches!(de, Event::GroupRequest(_));
+    }
+    #[test]
+    fn test_json15() {
+        let gm = MetaEvent::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+
+        matches!(de, Event::MetaEvent(_));
+    }
+    #[test]
+    fn test_json16() {
+        let gm = OfflineFileUpload::default();
+        let json = serde_json::to_string(&gm).unwrap();
+        let de: Event = serde_json::from_str(&json).unwrap();
+
+        matches!(de, Event::OfflineFileUpload(_));
+    }
+}
+
 #[async_trait]
 pub trait Meassages {
     fn start_with(&self, s: &str) -> bool;
@@ -316,104 +482,5 @@ impl GroupMessage {
             return Some(caps[1].to_string());
         }
         None
-    }
-}
-pub enum CQCodeType {
-    Image,
-    Video,
-    Face,
-    Audio,
-    Text,
-}
-impl std::fmt::Display for CQCodeType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CQCodeType::Image => write!(f, "image"),
-            CQCodeType::Video => write!(f, "video"),
-            CQCodeType::Face => write!(f, "face"),
-            CQCodeType::Audio => write!(f, "audio"),
-            CQCodeType::Text => write!(f, "text"),
-        }
-    }
-}
-pub struct CQCodeSeq {
-    pub code_type: CQCodeType,
-    pub data: HashMap<String, String>,
-}
-
-impl From<String> for CQCodeSeq {
-    fn from(s: String) -> Self {
-        let mut iter = s.split(',');
-        let code_type = iter.next().unwrap().split(':').nth(1).unwrap();
-        let code_type = CQCodeType::from(code_type);
-        let mut data = HashMap::new();
-        iter.for_each(|s| {
-            let mut iter = s.split('=');
-            let k = iter.next().unwrap().to_string();
-            let v = iter.next().unwrap().to_string();
-            data.insert(k, v);
-        });
-        CQCodeSeq { code_type, data }
-    }
-}
-impl From<&str> for CQCodeType {
-    fn from(s: &str) -> Self {
-        match s {
-            "image" => CQCodeType::Image,
-            "video" => CQCodeType::Video,
-            "face" => CQCodeType::Face,
-            "audio" => CQCodeType::Audio,
-            "text" => CQCodeType::Text,
-            _ => panic!("unknown code type {}", s),
-        }
-    }
-}
-impl From<CQCodeSeq> for String {
-    fn from(value: CQCodeSeq) -> Self {
-        if let CQCodeType::Text = value.code_type {
-            return value.data.get("text").unwrap().to_string();
-        }
-        let mut res = format!("CQ:{}", value.code_type);
-        value.data.iter().for_each(|(k, v)| {
-            let seq = format!(",{}={}", k, v);
-            res.push_str(&seq);
-        });
-        res
-    }
-}#[allow(dead_code)]
-pub struct Meassage{
-    inner:Vec<CQCodeSeq>
-}
-impl  From<String> for Meassage{
-    fn from(s:String)->Self{
-        let mut inner=Vec::new();
-        let re=regex::Regex::new(r"\[CQ:.*?\]").unwrap();
-        for cap in re.captures_iter(&s){
-            let cap=cap.get(0).unwrap().as_str().to_string();
-            inner.push(CQCodeSeq::from(cap));
-        }
-        Meassage{inner}
-    }
-}
-impl CQCodeSeq{
-    pub fn new_from_str(seq:&str)->Option<Self>{
-        //remove '[' ']'
-        let seq=seq.trim();
-        let seq=seq[1..seq.len()-1].to_string();
-        let mut iter=seq.split(',');
-        let code_type=iter.next().unwrap().split(':').nth(1);
-        if let Some(code_type)=code_type{
-            let code_type=CQCodeType::from(code_type);
-            let mut data=HashMap::new();
-            iter.for_each(|s|{
-                let mut iter=s.split('=');
-                let k=iter.next().unwrap().to_string();
-                let v=iter.next().unwrap().to_string();
-                data.insert(k,v);
-            });
-            return Some(CQCodeSeq{code_type,data});
-        }
-        None
-
     }
 }

@@ -98,7 +98,7 @@ impl AsyncJobScheduler {
         AsyncSchedulerFuture { futures }
     }
     pub async fn run(mut self) {
-        actix_web::rt::spawn(async move {
+        tokio::spawn(async move {
             loop {
                 self.run_pending().await;
             }

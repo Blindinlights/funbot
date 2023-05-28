@@ -1,6 +1,6 @@
 /rustqq/target
 /codegen/target
-Cargo.lock
+*.lock
 *.py
 *.env
 target
