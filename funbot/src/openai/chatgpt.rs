@@ -68,6 +68,12 @@ pub async fn gpt4(msg_event: MsgEvent) -> Result<(), Box<dyn std::error::Error>>
     msg_event.reply(&res).await?;
     Ok(())
 }
+/// TODO: 回复本次对话消耗的token数
+/// TODO: 限制每个用户每日最多使用token数
+///
+///
+/// 在私聊中使用GPT-3.5的API与机器人聊天
+///
 #[handler]
 pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerError> {
     if let Event::PrivateMessage(ref e) = event {
@@ -79,14 +85,21 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
             return Ok(());
         }
 
-        info!("{} ({}) 对ChatGPT说：{}", e.sender.nickname, e.user_id, e.msg());
+        info!(
+            "{} ({}) 对ChatGPT说：{}",
+            e.sender.nickname,
+            e.user_id,
+            e.msg()
+        );
         let user_id = e.user_id;
         let msg = e.msg();
         let res = private_chat(user_id, msg).await;
 
         if let Ok(res) = res {
-            info!(target:"funbot","ChatGPT回复：{}", res);
-            e.reply(&res).await?;
+            info!(target:"funbot","ChatGPT回复：{}", res.0);
+            let msg=format!("本次对话消耗了{}个token",res.1);
+            e.reply(&res.0).await?;
+            e.reply(&msg).await?;
         } else {
             error!("对话失败：{:?}", res);
             priv_chat_update_in_use(user_id, false).await?;
@@ -101,13 +114,19 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
 async fn gpt_group(event: &Event, config: &Config) -> Result<(), HandlerError> {
     if let Event::GroupMessage(ref e) = event {
         if let Some(prompt) = e.at_me() {
-            info!("{} ({}) 对ChatGPT说：{}", e.sender.nickname, e.user_id, e.msg());
+            info!(
+                "{} ({}) 对ChatGPT说：{}",
+                e.sender.nickname,
+                e.user_id,
+                e.msg()
+            );
             let group_id = e.group_id;
-            let nick_name = e.sender.nickname.clone();
-            let res = group_chat(group_id, &prompt, &nick_name).await;
+            let res = group_chat(group_id, &prompt).await;
             if let Ok(res) = res {
-                info!(target:"funbot","ChatGPT回复：{}", res);
-                e.reply(&res).await?;
+                info!(target:"funbot","ChatGPT回复：{}", res.0);
+                let msg=format!("本次对话消耗了{}个token",res.1);
+                e.reply(&res.0).await?;
+                e.reply(&msg).await?;
             } else {
                 error!("对话失败：{:?}", res);
                 e.reply("哎呀，bot又犯糊涂了~ (｡•́︿•̀｡)\n请您再试一次或者联系管理员哦！")
@@ -135,7 +154,7 @@ pub async fn audio_gpt(event: &Event, config: &Config) -> Result<(), HandlerErro
         tts::convert_audio_format(&input_path, &output_path)?;
         let prompt = tts::transcribe_audio(&output_path).await?;
         let res = private_chat(e.user_id, &prompt).await?;
-        let audio = tts::text_to_speech(&res).await?;
+        let audio = tts::text_to_speech(&res.0).await?;
         let file_name = audio.file_name().unwrap().to_str().unwrap();
         let msg = format!("[CQ:record,file=,url=file://{file_name}]");
         e.reply(&msg).await?;
@@ -371,13 +390,14 @@ fn build_openai(url: &str) -> reqwest::RequestBuilder {
         .bearer_auth(api_key)
         .header("Content-Type", "application/json")
 }
-
+///
+/// ## 处理对话
+/// `TODO`:返回值增加对话消耗的token数
 async fn gpt3(
     history: &mut Vec<Chat>,
     prompt: &str,
     system: &str,
-    _nick_name: Option<String>,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<(String, u32)> {
     let system = system.to_string();
     if history.is_empty() {
         history.push(Chat {
@@ -403,7 +423,7 @@ async fn gpt3(
         .await?;
     let usage = response.usage.unwrap();
     let (pt, ct) = (usage.prompt_tokens, usage.completion_tokens);
-
+    let tt = usage.total_tokens;
     let res = response.choices[0].message.content.clone();
     info!(target:"funbot","Usage:{} prompt and {} completion",pt,ct);
     history.push(Chat {
@@ -411,28 +431,26 @@ async fn gpt3(
         content: res.clone(),
         name: None,
     });
-    Ok(res)
+    Ok((res, tt))
 }
-async fn private_chat(user_id: i64, msg: &str) -> anyhow::Result<String> {
+async fn private_chat(user_id: i64, msg: &str) -> anyhow::Result<(String,u32)> {
     priv_chat_init(user_id).await?;
     let mut history: Vec<Chat> = get_private_history(user_id).await?;
     let system = get_private_system(user_id).await?;
-    let res = gpt3(&mut history, msg, &system, None).await;
+    let res = gpt3(&mut history, msg, &system).await;
     let prompt = serde_json::to_string(&history)?;
     priv_chat_update_history(user_id, &prompt).await?;
     let res = res?;
     Ok(res)
 }
-async fn group_chat(group_id: i64, msg: &str, nick_name: &str) -> anyhow::Result<String> {
+async fn group_chat(group_id: i64, msg: &str) -> anyhow::Result<(String,u32)> {
     group_chat_init(group_id).await?;
     let mut history = get_group_history(group_id).await?;
     let system = get_group_system(group_id).await?;
-    let res = gpt3(&mut history, msg, &system, Some(nick_name.to_string())).await;
+    let res = gpt3(&mut history, msg, &system).await;
     let prompt = serde_json::to_string(&history)?;
-
     group_chat_update_history(group_id, &prompt).await?;
     let res = res?;
-
     Ok(res)
 }
 
