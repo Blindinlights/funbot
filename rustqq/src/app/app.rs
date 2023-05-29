@@ -83,7 +83,9 @@ async fn index(
     }
 
     for f in handler.iter() {
-        f.handler.register(&event).await.ok().unwrap();
+        let _=f.handler.register(&event).await.map_err(|e| {
+            info!("处理消息出错:{}", e);
+        });
     }
     "ok"
 }

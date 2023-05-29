@@ -202,6 +202,14 @@ mod test {
         let (mut left, mut right) = (format!("{left:x}"), format!("{right:x}"));
         let _date = get_date(&mut left, &mut right).await.unwrap();
     }
+
+    #[actix_web::test]
+    async fn test_url(){
+        let url="https://twitter.com/_fishu24_/status/1641432107124953092";
+
+        let text=get_page_info(url).await.unwrap();
+        println!("{}",text);
+    }
 }
 #[handler]
 async fn say(event: &Event) -> Result<(), Box<dyn std::error::Error>> {

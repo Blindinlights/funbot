@@ -5,17 +5,17 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-reqwest = { version = "0.11.13", features = ["json","blocking"] }
+reqwest = { version = "0.11.13", features = ["json",] }
 tokio = { version = "1.22.0", features = ["full"] }
 serde_json = "1.0"
 serde = { version = "1.0.147", features = ["derive"] }
 async-trait="0.1.51"
 codegen={path="../codegen"}
-dyn-clone="1.0.4"
+
 cron="0.12.0"
 chrono="0.4.19"
 uuid={version="1.2.2",features=["v4"]}
 regex="1.5.4"
 log="0.4.17"
-axum = { version = "0.6.18", features = ["tokio"] }
+
 actix-web = { version = "4.3.1" }
