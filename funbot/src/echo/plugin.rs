@@ -2,7 +2,7 @@ use reqwest::ClientBuilder;
 use rustqq::client::message::RowMessage;
 use rustqq::event::events::Meassages;
 use rustqq::event::reply_trait::Reply;
-use rustqq::event::MsgEvent;
+use rustqq::event::{MsgEvent, Event};
 use rustqq::handler;
 use std::mem::swap;
 
@@ -99,20 +99,20 @@ async fn get_page_info(url: &str) -> Result<String, Box<dyn std::error::Error>> 
         image.to_string()
     };
     let raw_msg = RowMessage::new()
-        .add_plain_txt(title.as_str())
+        .text(title.as_str())
         .shift_line()
-        .add_plain_txt("========================\n")
-        .add_plain_txt(description.as_str())
+        .text("========================\n")
+        .text(description.as_str())
         .shift_line()
-        .add_image(image.as_str())
+        .image(image.as_str())
         .get_msg()
         .to_string();
     Ok(raw_msg)
 }
 
-#[handler]
+#[handler(name = "Emoji混合",desc = "将两个Emoji混合图片，例如😡+😡,仅群聊")]
 pub async fn emoji_mix(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(e) = MsgEvent::new(event) {
+    if let Event::GroupMessage(e) = event {
         let re = regex::Regex::new(
             r"^(?:(\p{Emoji})\p{Emoji_Modifier}?(?:\p{Emoji_Component}\p{Emoji}\p{Emoji_Modifier}?)*)\+(?:(\p{Emoji})\p{Emoji_Modifier}?(?:\p{Emoji_Component}\p{Emoji}\p{Emoji_Modifier}?)*)$",
         )?;
@@ -131,7 +131,6 @@ pub async fn emoji_mix(event: &Event) -> Result<(), Box<dyn std::error::Error>> 
             return Err("未找到该表情".into());
         }
         let root_url = "https://www.gstatic.com/android/keyboard/emojikitchen";
-        //try to get image
         let url = format!("{root_url}/{date}/u{left}/u{left}_u{right}.png");
         let res = ClientBuilder::new()
             .gzip(true)
@@ -144,7 +143,7 @@ pub async fn emoji_mix(event: &Event) -> Result<(), Box<dyn std::error::Error>> 
             return Err("不支持的表情组合".into());
         }
         let mut rmsg = RowMessage::new();
-        rmsg.add_image(url.as_str());
+        rmsg.image(url.as_str());
         e.reply(rmsg.get_msg()).await?;
     }
     Ok(())

@@ -424,6 +424,20 @@ mod tests {
     }
 }
 
+impl Event {
+
+    pub fn msg_event(&self) -> Option<MsgEvent> {
+        match self {
+            Event::PrivateMessage(msg) => Some(MsgEvent::PrivateMessage(msg.clone())),
+            Event::GroupMessage(msg) => Some(MsgEvent::GroupMessage(msg.clone())),
+            _ => None,
+        }
+    }
+    
+}
+
+
+
 #[async_trait]
 pub trait Meassages {
     fn start_with(&self, s: &str) -> bool;

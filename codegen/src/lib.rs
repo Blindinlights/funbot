@@ -75,6 +75,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ser_desc: String= String::new();
     let mut ser_cmd: String = String::new();
     let mut ser_alias: String = String::new();
+    let mut ser_exclude: bool = false;
     for a in attrs {
         if let NestedMeta::Meta(inner) = a {
             if let Meta::NameValue(nv) = inner {
@@ -97,6 +98,11 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                     "alias" => {
                         if let syn::Lit::Str(lit) = nv.lit {
                             ser_alias = lit.value();
+                        }
+                    }
+                    "exclude" => {
+                        if let syn::Lit::Bool(lit) = nv.lit {
+                            ser_exclude = lit.value;
                         }
                     }
                     _ => {}
@@ -136,18 +142,9 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                         description:#ser_desc.to_string(),
                         command:#ser_cmd.to_string(),
                         alias:#ser_alias.to_string(),
+                        exclude:#ser_exclude,
                     },
                     handler:Box::new(self),
-                }
-            }
-        }
-        impl ::rustqq::app::service::IntoServiceInfo for #ident{
-            fn into_service_info(&self)->::rustqq::app::service::ServiceInfo{
-                ::rustqq::app::service::ServiceInfo{
-                    name:#ser_name.to_string(),
-                    description:#ser_desc.to_string(),
-                    command:#ser_cmd.to_string(),
-                    alias:#ser_alias.to_string(),
                 }
             }
         }
@@ -163,6 +160,7 @@ pub fn command(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ser_desc: String= String::new();
     let mut ser_cmd: String = String::new();
     let mut ser_alias: String = String::new();
+    let mut ser_exclude: bool = false;
     for a in attrs {
         if let NestedMeta::Meta(inner) = a {
             if let Meta::NameValue(nv) = inner {
@@ -185,6 +183,11 @@ pub fn command(attr: TokenStream, item: TokenStream) -> TokenStream {
                     "alias" => {
                         if let syn::Lit::Str(lit) = nv.lit {
                             ser_alias = lit.value();
+                        }
+                    }
+                    "exclude" => {
+                        if let syn::Lit::Bool(lit) = nv.lit {
+                            ser_exclude = lit.value;
                         }
                     }
                     _ => {}
@@ -224,21 +227,13 @@ pub fn command(attr: TokenStream, item: TokenStream) -> TokenStream {
                         description:#ser_desc.to_string(),
                         command:#ser_cmd.to_string(),
                         alias:#ser_alias.to_string(),
+                        exclude:#ser_exclude,
                     },
                     handler:Box::new(self),
                 }
             }
         }
-        impl ::rustqq::app::service::IntoServiceInfo for #ident{
-            fn into_service_info(&self)->::rustqq::app::service::ServiceInfo{
-                ::rustqq::app::service::ServiceInfo{
-                    name:#ser_name.to_string(),
-                    description:#ser_desc.to_string(),
-                    command:#ser_cmd.to_string(),
-                    alias:#ser_alias.to_string(),
-                }
-            }
-        }
+
     );
     gen.into()
 }

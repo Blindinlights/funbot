@@ -12,7 +12,7 @@ use rustqq::{
 };
 use serde_json::{json, Value};
 use sqlx::{self, PgPool};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, error::Error, path::PathBuf};
 use tiktoken_rs::async_openai::get_chat_completion_max_tokens as get_token;
 pub const API_BASE: &str = "https://openai.clinkz.top/v1";
 use super::tts;
@@ -28,30 +28,16 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
     let image_url = v["data"][0]["url"].as_str().unwrap();
     Ok(image_url.to_string())
 }
-#[handler]
-async fn open_image(event: Event) -> Result<(), Box<dyn std::error::Error>> {
-    if let Event::GroupMessage(ref msg) = event {
-        if msg.start_with("/prompt") {
-            let prompt = msg.message.replace("/prompt", "");
-            let image_url = generate_image(prompt.as_str()).await?;
-            let mut raw_msg = RowMessage::new();
-            raw_msg.reply(msg.message_id);
-            raw_msg.add_image(image_url.as_str());
-            msg.reply(raw_msg.get_msg()).await?;
-            return Ok(());
-        }
-    }
-    if let Event::PrivateMessage(ref msg) = event {
-        if msg.start_with("/prompt") {
-            let prompt = msg.message.replace("/prompt", "");
-            let image_url = generate_image(prompt.as_str()).await?;
-            let mut raw_msg = RowMessage::new();
-            raw_msg.reply(msg.message_id);
-            raw_msg.add_image(image_url.as_str());
-            msg.reply(raw_msg.get_msg()).await?;
-            return Ok(());
-        }
-    }
+#[command(cmd = "/prompt")]
+async fn open_image(msg_event: MsgEvent) -> Result<(), Box<dyn std::error::Error>> {
+    let msg = msg_event;
+    let prompt = msg.msg().replace("/prompt", "");
+    let image_url = generate_image(prompt.as_str()).await?;
+    let mut raw_msg = RowMessage::new();
+    raw_msg.reply(msg.msg_id());
+    raw_msg.image(image_url.as_str());
+    msg.reply(raw_msg.get_msg()).await?;
+    return Ok(());
     Ok(())
 }
 #[command(cmd = "/GPT4", desc = "GPT4聊天")]
@@ -68,20 +54,17 @@ pub async fn gpt4(msg_event: MsgEvent) -> Result<(), Box<dyn std::error::Error>>
     msg_event.reply(&res).await?;
     Ok(())
 }
-/// TODO: 回复本次对话消耗的token数
-/// TODO: 限制每个用户每日最多使用token数
-///
-///
-/// 在私聊中使用GPT-3.5的API与机器人聊天
-///
-#[handler]
+#[handler(exclude = true,name="ChatGPT",desc="在私聊中和ChatGPT聊天")]
 pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerError> {
     if let Event::PrivateMessage(ref e) = event {
         let user_id = e.user_id;
-        if e.message.starts_with("[CQ:") {
-            return Ok(());
-        }
-        if e.message.trim().starts_with('/') {
+        let verify = verify(e.user_id).await.map_err(|e| {
+            error!("{}", e);
+            e
+        })?;
+        if !verify {
+            e.reply("您还没有获得ChatGPT的使用权限。您可以通过联系管理员来获得信息。")
+                .await?;
             return Ok(());
         }
 
@@ -97,7 +80,7 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
 
         if let Ok(res) = res {
             info!(target:"funbot","ChatGPT回复：{}", res.0);
-            let msg=format!("本次对话消耗了{}个token",res.1);
+            let msg = format!("本次对话消耗了{}个token", res.1);
             e.reply(&res.0).await?;
             e.reply(&msg).await?;
         } else {
@@ -110,7 +93,7 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
     Ok(())
 }
 
-#[handler]
+#[handler(name="群聊ChatGPT",desc="在群聊中和ChatGPT聊天，@机器人+内容，例如：@Zephyr 你好")]
 async fn gpt_group(event: &Event, config: &Config) -> Result<(), HandlerError> {
     if let Event::GroupMessage(ref e) = event {
         if let Some(prompt) = e.at_me() {
@@ -124,7 +107,7 @@ async fn gpt_group(event: &Event, config: &Config) -> Result<(), HandlerError> {
             let res = group_chat(group_id, &prompt).await;
             if let Ok(res) = res {
                 info!(target:"funbot","ChatGPT回复：{}", res.0);
-                let msg=format!("本次对话消耗了{}个token",res.1);
+                let msg = format!("本次对话消耗了{}个token", res.1);
                 e.reply(&res.0).await?;
                 e.reply(&msg).await?;
             } else {
@@ -433,7 +416,7 @@ async fn gpt3(
     });
     Ok((res, tt))
 }
-async fn private_chat(user_id: i64, msg: &str) -> anyhow::Result<(String,u32)> {
+async fn private_chat(user_id: i64, msg: &str) -> anyhow::Result<(String, u32)> {
     priv_chat_init(user_id).await?;
     let mut history: Vec<Chat> = get_private_history(user_id).await?;
     let system = get_private_system(user_id).await?;
@@ -443,7 +426,7 @@ async fn private_chat(user_id: i64, msg: &str) -> anyhow::Result<(String,u32)> {
     let res = res?;
     Ok(res)
 }
-async fn group_chat(group_id: i64, msg: &str) -> anyhow::Result<(String,u32)> {
+async fn group_chat(group_id: i64, msg: &str) -> anyhow::Result<(String, u32)> {
     group_chat_init(group_id).await?;
     let mut history = get_group_history(group_id).await?;
     let system = get_group_system(group_id).await?;
@@ -501,4 +484,17 @@ pub async fn chat_set(msg_event: MsgEvent) -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+use rustqq::CqHttpApi;
+async fn verify(user_id: i64) -> Result<bool, Box<dyn Error>> {
+    let api = CqHttpApi::new();
+    let groups = api.get_group_list().await?;
+    let groups = groups.into_iter().map(|g| g.group_id).collect::<Vec<_>>();
+    for id in groups {
+        let members = api.get_group_member_list(id).await?;
+        if members.into_iter().any(|m| m.user_id == user_id) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }

@@ -9,7 +9,11 @@ use rustqq::event::reply_trait::Reply;
 use rustqq::handler;
 use rusttype::{Font, Scale};
 use std::path;
-#[handler]
+#[handler(
+    name = "Make Quote",
+    desc = "在群聊中引用消息并发送make-it-quote,做成语录图片",
+    help ="在群聊中引用消息并发送make-it-quote,做成语录图片"
+)]
 pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
     if let Event::GroupMessage(ref msg) = event {
         //match [CQ:reply,id={id}] <msg>
@@ -48,7 +52,7 @@ pub async fn quote_it(event: Event) -> Result<(), Box<dyn std::error::Error>> {
                 file_name = path.to_string();
                 get_pic(sender_id, init_msg, nick_name, path).await?;
                 let path = "file://".to_owned() + path;
-                raw_msg.add_image(path.as_str());
+                raw_msg.image(path.as_str());
                 msg.reply(raw_msg.get_msg()).await?;
                 let path = path.replace("file://", "");
                 std::fs::remove_file(path)?;
@@ -98,14 +102,14 @@ async fn get_pic(
         canvas.put_pixel(x, y, n);
     }
     let avg_color = image::Rgba([avg_color.0 as u8, avg_color.1 as u8, avg_color.2 as u8, 255]);
-    
+
     canvas
         .pixels_mut()
         .enumerate()
         .filter(|(i, _)| i % 1280 >= 640)
         .for_each(|(_, p)| *p = avg_color);
 
-    let font_data = include_bytes!("../fonts/mergefonts.ttf");
+    let font_data = include_bytes!("../fonts/ZhiMangXing-Regular.ttf");
     let font = Font::try_from_bytes(font_data as &[u8]).unwrap();
     let scale = Scale { x: 45.0, y: 45.0 };
     let font_color = {

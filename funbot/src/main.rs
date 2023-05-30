@@ -8,7 +8,7 @@ mod openai;
 mod quote;
 use echo::{emoji_mix, url_preview};
 use make_it_quote::quote_it;
-use openai::{audio_gpt, gpt4, gpt_group, gpt_private, open_image, open_journey};
+use openai::{audio_gpt, gpt4, gpt_group, gpt_private, open_image, open_journey,daily::{daily, daily_cmd}};
 use quote::bing_pic;
 
 use crate::openai::chat_set;
@@ -16,6 +16,12 @@ use crate::openai::chat_set;
 async fn main() {
     info!("Bot start");
     setup_logger().unwrap();
+    let mut jobs=rustqq::app::AsyncJobScheduler::new();
+    jobs.add_job(daily());
+    actix_web::rt::spawn(async move {
+        jobs.run().await;
+    });
+
     let app = app::App::new()
         .bind("127.0.0.1:8755".parse().unwrap())
         .service(bing_pic)
@@ -28,7 +34,8 @@ async fn main() {
         .service(chat_set)
         .service(gpt4)
         .service(open_image)
-        .service(audio_gpt);
+        .service(audio_gpt)
+        .service(daily_cmd);
     app.run().await.unwrap();
 }
 fn setup_logger() -> Result<(), fern::InitError> {

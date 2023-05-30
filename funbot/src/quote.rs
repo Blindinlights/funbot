@@ -39,15 +39,15 @@ pub async fn bing_pic(event: Event) ->Result<(),Box<dyn std::error::Error>>{
             let url=format!("https://cn.bing.com{url}");
             let mut msg=RowMessage::new();
             //msg.add_plain_txt(&format!("{}\n{}\n",title,copyright));
-            msg.add_plain_txt(title)
+            msg.text(title)
             .shift_line()
-            .add_plain_txt("========================")
+            .text("========================")
             .shift_line()
-            .add_plain_txt(copyright)
+            .text(copyright)
             .shift_line();
             e.reply(msg.get_msg()).await?;
             msg.clear();
-            msg.add_image(&url);
+            msg.image(&url);
             e.reply(msg.get_msg()).await?;
         }
     }

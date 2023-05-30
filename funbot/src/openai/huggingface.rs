@@ -3,7 +3,7 @@ use reqwest;
 use rustqq::{
     client::message::RowMessage,
     command,
-    event::{Meassages, Reply}
+    event::{Meassages, Reply},
 };
 use std::{io::Write, path};
 pub struct HuggingFace {
@@ -85,11 +85,16 @@ async fn reply_msg(
     let path = "file://".to_string() + path.as_str();
     let mut raw_msg = RowMessage::new();
     raw_msg.reply(msg_id);
-    raw_msg.add_image(&path);
+    raw_msg.image(&path);
     let path = path.replace("file://", "");
     Ok((raw_msg.get_msg().to_string(), path))
 }
-#[command(cmd = "/journey", desc = "使用huggingface的openjourney模型生成图片",alias="/openjourney|/oj")]
+#[command(
+    name = "ai画图",
+    cmd = "/journey",
+    desc = "使用huggingface的openjourney模型生成图片(很慢，非常慢)",
+    alias = "/openjourney|/oj"
+)]
 async fn open_journey(msg_event: _) -> Result<(), std::error::Error> {
     info!("openjourney");
     let prompt = msg_event.msg().replace("/journey", "");

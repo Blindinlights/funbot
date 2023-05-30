@@ -6,6 +6,7 @@ pub struct ServiceInfo {
     pub description: String,
     pub command: String,
     pub alias: String,
+    pub exclude: bool,
 }
 pub struct Service {
     pub info: ServiceInfo,
@@ -25,33 +26,4 @@ impl Service {
 }
 pub trait  IntoService{
     fn into_service(self)->Service;
-}
-pub trait  IntoServiceInfo{
-    fn into_service_info(&self)->ServiceInfo;
-}
-pub struct Services(pub Vec<Service>);
-
-pub trait IntoServices{
-    fn into_services(self)->Services;
-}
-
-impl<T> IntoServices for T
-where
-    T: IntoService,
-{
-    fn into_services(self)->Services{
-        Services(vec![self.into_service()])
-    }
-}
-impl<T> IntoServices for Vec<T>
-where
-    T: IntoService,
-{
-    fn into_services(self)->Services{
-        let mut services=Vec::new();
-        for s in self.into_iter(){
-            services.push(s.into_service());
-        }
-        Services(services)
-    }
 }
