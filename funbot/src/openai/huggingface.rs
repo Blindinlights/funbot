@@ -47,7 +47,7 @@ impl HuggingFace {
 
         HuggingFace::new(
             api_key,
-            "https://api-inference.huggingface.co/models/prompthero/openjourney".to_string(),
+            "https://api-inference.huggingface.co/models/prompthero/openjourney-v4".to_string(),
         )
     }
     #[allow(dead_code)]
