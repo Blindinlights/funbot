@@ -8,15 +8,20 @@ mod openai;
 mod quote;
 use echo::{emoji_mix, url_preview};
 use make_it_quote::quote_it;
-use openai::{audio_gpt, gpt4, gpt_group, gpt_private, open_image, open_journey,daily::{daily, daily_cmd}};
+use openai::{
+    audio_gpt,
+    daily::{daily, daily_cmd},
+    gpt4, gpt_group, gpt_private, open_image, open_journey,
+};
 use quote::bing_pic;
 
 use crate::openai::chat_set;
 #[actix_web::main]
 async fn main() {
+    log4rs::init_file("log4rs.yml", Default::default()).unwrap();
     info!("Bot start");
     setup_logger().unwrap();
-    let mut jobs=rustqq::app::AsyncJobScheduler::new();
+    let mut jobs = rustqq::app::AsyncJobScheduler::new();
     jobs.add_job(daily());
     actix_web::rt::spawn(async move {
         jobs.run().await;
@@ -39,24 +44,33 @@ async fn main() {
     app.run().await.unwrap();
 }
 fn setup_logger() -> Result<(), fern::InitError> {
-    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let date = fern::DateBased::new("log/", today);
-    let log_file = fern::Dispatch::new().chain(date);
+    let date = fern::DateBased::new("log/", "%Y-%m-%d-funbot.log");
+    let level = log_filter();
+
     fern::Dispatch::new()
-        .level(log::LevelFilter::Info)
-        .filter(|metedata| {
-            metedata.target() != "sqlx::query" && metedata.level() <= log::LevelFilter::Info
-        })
-        .chain(log_file)
+        .level(level)
+        .level_for("sqlx", log::LevelFilter::Warn)
+        .chain(date)
         .chain(std::io::stdout())
         .format(|out, message, record| {
             out.finish(format_args!(
-                "{} [{}] {}",
+                "{} [{}] {} {}",
                 chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
                 record.level(),
+                record.line().unwrap(),
                 message
             ))
         })
         .apply()?;
     Ok(())
+}
+fn log_filter() -> log::LevelFilter {
+    let env = std::env::var("RUST_LOG").unwrap_or("info".to_string());
+    match env.as_str() {
+        "debug" => log::LevelFilter::Debug,
+        "info" => log::LevelFilter::Info,
+        "warn" => log::LevelFilter::Warn,
+        "error" => log::LevelFilter::Error,
+        _ => log::LevelFilter::Info,
+    }
 }
