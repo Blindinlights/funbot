@@ -20,6 +20,11 @@ pub trait EventHandler: Send + Sync {
     async fn register(&self, event: &Event) -> Result<(), Box<dyn std::error::Error>>;
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl App {
     pub fn new() -> Self {
         Self {
@@ -134,21 +139,20 @@ async fn index(
 
     let cmds = handler
         .iter()
-        .map(|f| {
+        .flat_map(|f| {
             let cmd = f.info.command.clone();
             let mut cmd = vec![cmd];
             if !f.info.alias.is_empty() {
                 let alias: Vec<String> = f
                     .info
                     .alias
-                    .split("|")
+                    .split('|')
                     .map(|s| s.to_string())
                     .collect::<Vec<_>>();
                 cmd.extend(alias);
             }
             cmd
         })
-        .flatten()
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>();
 
@@ -164,7 +168,7 @@ async fn index(
                 let cmd = f
                     .info
                     .alias
-                    .split("|")
+                    .split('|')
                     .map(|s| s.to_string())
                     .chain(cmd)
                     .filter(|s| !s.is_empty())

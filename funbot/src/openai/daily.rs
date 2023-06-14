@@ -44,7 +44,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
     let key = std::env::var("OPENAI_API_KEY").unwrap();
     let form = serde_json::json!({
         "prompt":prompt,
-        "size":"512x512",
+        "size":"1024x1024",
     });
     let client = reqwest::Client::new()
         .post(url)
@@ -78,6 +78,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     for user_id in friend_list {
         api.send_private_message(user_id, &msg_poem).await?;
         api.send_private_message(user_id, &msg_image).await?;
+        api.send_private_message(user_id, "可用 `/daily off` 关闭每日诗句").await?;
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 
     Ok(())
@@ -110,12 +112,11 @@ lazy_static::lazy_static! {
 
 }
 fn is_on(user_id: i64) -> bool {
-    CONFIG
+    *CONFIG
         .lock()
         .unwrap()
         .get(&user_id)
         .unwrap_or(&false)
-        .clone()
 }
 fn update(user_id: i64, flag: bool) {
     CONFIG.lock().unwrap().insert(user_id, flag);

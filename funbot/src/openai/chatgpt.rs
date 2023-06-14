@@ -13,7 +13,7 @@ use rustqq::{
 use serde_json::{json, Value};
 use sqlx::{self, PgPool};
 use std::{collections::HashMap, error::Error, path::PathBuf};
-use tiktoken_rs::async_openai::get_chat_completion_max_tokens as get_token;
+
 pub const API_BASE: &str = "https://openai.clinkz.top/v1";
 use super::tts;
 #[allow(unused)]
@@ -32,7 +32,7 @@ async fn generate_image(prompt: &str) -> Result<String, Box<dyn std::error::Erro
 async fn open_image(msg_event: MsgEvent) -> Result<(), Box<dyn std::error::Error>> {
     let msg = msg_event;
     let prompt = msg.msg().replace("/prompt", "");
-    let image_url = generate_image(prompt.as_str()).await?;
+    let image_url: String = generate_image(prompt.as_str()).await?;
     let mut raw_msg = RowMessage::new();
     raw_msg.reply(msg.msg_id());
     raw_msg.image(image_url.as_str());
@@ -54,7 +54,7 @@ pub async fn gpt4(msg_event: MsgEvent) -> Result<(), Box<dyn std::error::Error>>
     msg_event.reply(&res).await?;
     Ok(())
 }
-#[handler(exclude = true,name="ChatGPT",desc="在私聊中和ChatGPT聊天")]
+#[handler(exclude = true, name = "ChatGPT", desc = "在私聊中和ChatGPT聊天")]
 pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerError> {
     if let Event::PrivateMessage(ref e) = event {
         let user_id = e.user_id;
@@ -93,7 +93,10 @@ pub async fn gpt_private(event: &Event, config: &Config) -> Result<(), HandlerEr
     Ok(())
 }
 
-#[handler(name="群聊ChatGPT",desc="在群聊中和ChatGPT聊天，@机器人+内容，例如：@Zephyr 你好")]
+#[handler(
+    name = "群聊ChatGPT",
+    desc = "在群聊中和ChatGPT聊天，@机器人+内容，例如：@Zephyr 你好"
+)]
 async fn gpt_group(event: &Event, config: &Config) -> Result<(), HandlerError> {
     if let Event::GroupMessage(ref e) = event {
         if let Some(prompt) = e.at_me() {
@@ -394,9 +397,9 @@ async fn gpt3(
         content: prompt.to_string(),
         name: None,
     });
-    check(history).await?;
+    check(history)?;
     let arg = CreateChatArgs::default()
-        .model("gpt-3.5-turbo")
+        .model("gpt-3.5-turbo-16k")
         .messages(history.clone())
         .build()?;
     let response = async_openai::Client::new()
@@ -437,20 +440,20 @@ async fn group_chat(group_id: i64, msg: &str) -> anyhow::Result<(String, u32)> {
     Ok(res)
 }
 
-async fn check(history: &mut Vec<Chat>) -> anyhow::Result<()> {
-    let tokens = get_token("gpt-3.5-turbo", history)?;
-    info!(target:"funbot","History token count:{}", 4097-tokens);
-    if tokens > 0 {
+fn check(history: &mut Vec<Chat>) -> anyhow::Result<()> {
+    let msg = history.iter().map(|c| c.into()).collect::<Vec<_>>();
+    let tokens = tiktoken_rs::num_tokens_from_messages("gpt-3.5-turbo", &msg)?;
+    info!(target:"funbot","History token count:{}", tokens);
+    if tokens < 16_000 {
         return Ok(());
     }
-
-    loop {
-        let token = get_token("gpt-3.5-turbo", history)?;
-        if token > 0 {
+    for i in history.iter_mut() {
+        if i.role == Role::User {
+            i.content = "".to_string();
             break;
         }
-        history.remove(1);
     }
+    check(history)?;
     Ok(())
 }
 #[command(cmd = "/gpt", desc = "聊天命令")]
@@ -467,20 +470,18 @@ pub async fn chat_set(msg_event: MsgEvent) -> Result<(), Box<dyn Error>> {
         msg_event
             .reply("已经帮您重置了对话记录和system prompt啦！现在我们可以开始全新的对话啦!")
             .await?;
-    } else {
-        if cmd.starts_with("role") {
-            let sys = cmd.trim_start_matches("role").trim();
-            let user_id = msg_event.user_id();
-            let group_id = msg_event.group_id();
-            if msg_event.is_group() {
-                group_chat_update_system(group_id.unwrap(), sys).await?;
-            } else {
-                priv_chat_update_system(user_id, sys).await?;
-            }
-            msg_event
-                .reply("已经帮您更新了system prompt啦！现在我们可以开始全新的对话啦!")
-                .await?;
+    } else if cmd.starts_with("role") {
+        let sys = cmd.trim_start_matches("role").trim();
+        let user_id = msg_event.user_id();
+        let group_id = msg_event.group_id();
+        if msg_event.is_group() {
+            group_chat_update_system(group_id.unwrap(), sys).await?;
+        } else {
+            priv_chat_update_system(user_id, sys).await?;
         }
+        msg_event
+            .reply("已经帮您更新了system prompt啦！现在我们可以开始全新的对话啦!")
+            .await?;
     }
 
     Ok(())

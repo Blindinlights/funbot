@@ -6,6 +6,7 @@ mod echo;
 mod make_it_quote;
 mod openai;
 mod quote;
+mod bing;
 use echo::{emoji_mix, url_preview};
 use make_it_quote::quote_it;
 use openai::{
@@ -13,17 +14,17 @@ use openai::{
     daily::{daily, daily_cmd},
     gpt4, gpt_group, gpt_private, open_image, open_journey,
 };
+use bing::new_bing;
 use quote::bing_pic;
 
 use crate::openai::chat_set;
-#[actix_web::main]
+#[tokio::main]
 async fn main() {
-    log4rs::init_file("log4rs.yml", Default::default()).unwrap();
     info!("Bot start");
     setup_logger().unwrap();
     let mut jobs = rustqq::app::AsyncJobScheduler::new();
     jobs.add_job(daily());
-    actix_web::rt::spawn(async move {
+    tokio::spawn(async move {
         jobs.run().await;
     });
 
@@ -38,6 +39,7 @@ async fn main() {
         .service(gpt_group)
         .service(chat_set)
         .service(gpt4)
+        .service(new_bing)
         .service(open_image)
         .service(audio_gpt)
         .service(daily_cmd);

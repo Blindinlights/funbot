@@ -87,7 +87,15 @@ pub struct CqHttpApi {
     socket_addr: SocketAddr,
     client: Client,
     url: String,
+
 }
+impl Default for CqHttpApi {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
 
 type BoxResult<T> = Result<T, Box<dyn std::error::Error>>;
 impl CqHttpApi {

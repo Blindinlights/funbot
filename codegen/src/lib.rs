@@ -72,43 +72,42 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attrs = parse_macro_input!(attr as AttributeArgs);
 
     let mut ser_name = String::new();
-    let mut ser_desc: String= String::new();
+    let mut ser_desc: String = String::new();
     let mut ser_cmd: String = String::new();
     let mut ser_alias: String = String::new();
     let mut ser_exclude: bool = false;
     for a in attrs {
-        if let NestedMeta::Meta(inner) = a {
-            if let Meta::NameValue(nv) = inner {
-                match nv.path.get_ident().unwrap().to_string().as_str() {
-                    "name" => {
-                        if let syn::Lit::Str(lit) = nv.lit {
-                            ser_name = lit.value();
-                        }
+        if let NestedMeta::Meta(Meta::NameValue(nv)) = a {
+            //if let Meta::NameValue(nv) = inner {
+            match nv.path.get_ident().unwrap().to_string().as_str() {
+                "name" => {
+                    if let syn::Lit::Str(lit) = nv.lit {
+                        ser_name = lit.value();
                     }
-                    "desc" => {
-                        if let syn::Lit::Str(lit) = nv.lit {
-                            ser_desc = lit.value();
-                        }
-                    }
-                    "cmd" => {
-                        if let syn::Lit::Str(lit) = nv.lit {
-                            ser_cmd = lit.value();
-                        }
-                    }
-                    "alias" => {
-                        if let syn::Lit::Str(lit) = nv.lit {
-                            ser_alias = lit.value();
-                        }
-                    }
-                    "exclude" => {
-                        if let syn::Lit::Bool(lit) = nv.lit {
-                            ser_exclude = lit.value;
-                        }
-                    }
-                    _ => {}
                 }
-
+                "desc" => {
+                    if let syn::Lit::Str(lit) = nv.lit {
+                        ser_desc = lit.value();
+                    }
+                }
+                "cmd" => {
+                    if let syn::Lit::Str(lit) = nv.lit {
+                        ser_cmd = lit.value();
+                    }
+                }
+                "alias" => {
+                    if let syn::Lit::Str(lit) = nv.lit {
+                        ser_alias = lit.value();
+                    }
+                }
+                "exclude" => {
+                    if let syn::Lit::Bool(lit) = nv.lit {
+                        ser_exclude = lit.value;
+                    }
+                }
+                _ => {}
             }
+            //}
         }
     }
 
@@ -157,43 +156,43 @@ pub fn command(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attrs = parse_macro_input!(attr as AttributeArgs);
 
     let mut ser_name = String::new();
-    let mut ser_desc: String= String::new();
+    let mut ser_desc: String = String::new();
     let mut ser_cmd: String = String::new();
     let mut ser_alias: String = String::new();
     let mut ser_exclude: bool = false;
     for a in attrs {
-        if let NestedMeta::Meta(inner) = a {
-            if let Meta::NameValue(nv) = inner {
-                match nv.path.get_ident().unwrap().to_string().as_str() {
-                    "name" => {
-                        if let syn::Lit::Str(lit) = nv.lit {
-                            ser_name = lit.value();
-                        }
+        if let NestedMeta::Meta(Meta::NameValue(nv)) = a {
+            //if let Meta::NameValue(nv) = inner {
+            match nv.path.get_ident().unwrap().to_string().as_str() {
+                "name" => {
+                    if let syn::Lit::Str(lit) = nv.lit {
+                        ser_name = lit.value();
                     }
-                    "desc" => {
-                        if let syn::Lit::Str(lit) = nv.lit {
-                            ser_desc = lit.value();
-                        }
-                    }
-                    "cmd" => {
-                        if let syn::Lit::Str(lit) = nv.lit {
-                            ser_cmd = lit.value();
-                        }
-                    }
-                    "alias" => {
-                        if let syn::Lit::Str(lit) = nv.lit {
-                            ser_alias = lit.value();
-                        }
-                    }
-                    "exclude" => {
-                        if let syn::Lit::Bool(lit) = nv.lit {
-                            ser_exclude = lit.value;
-                        }
-                    }
-                    _ => {}
                 }
-
+                "desc" => {
+                    if let syn::Lit::Str(lit) = nv.lit {
+                        ser_desc = lit.value();
+                    }
+                }
+                "cmd" => {
+                    if let syn::Lit::Str(lit) = nv.lit {
+                        ser_cmd = lit.value();
+                    }
+                }
+                "alias" => {
+                    if let syn::Lit::Str(lit) = nv.lit {
+                        ser_alias = lit.value();
+                    }
+                }
+                "exclude" => {
+                    if let syn::Lit::Bool(lit) = nv.lit {
+                        ser_exclude = lit.value;
+                    }
+                }
+                _ => {}
             }
+
+            //}
         }
     }
 

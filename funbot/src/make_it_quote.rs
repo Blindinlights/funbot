@@ -96,7 +96,7 @@ async fn get_pic(
             let r = ((p[0] as f32 * (1. - rate)) as u32 + (avg_color.0 as f32 * rate) as u32) as u8;
             let g = ((p[1] as f32 * (1. - rate)) as u32 + (avg_color.1 as f32 * rate) as u32) as u8;
             let b = ((p[2] as f32 * (1. - rate)) as u32 + (avg_color.2 as f32 * rate) as u32) as u8;
-            let a = ((p[3] as f32 * (1. - rate)) as u32 + (255. as f32 * rate) as u32) as u8;
+            let a = ((p[3] as f32 * (1. - rate)) as u32 + (255_f32 * rate) as u32) as u8;
             n = image::Rgba([r, g, b, a]);
         }
         canvas.put_pixel(x, y, n);
